@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>
+    从东南到东南 --姑苏杯信安大赛小记 |
+    
+    Migraine</title>
+  
+    <link rel="shortcut icon" href="/favicon.ico">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<script src="/js/pace.min.js"></script>
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+<main class="content">
+  <section class="outer">
+  
+
+<article id="post-Gusubei" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      从东南到东南 --姑苏杯信安大赛小记
+    </h1>
+  
+  
+
+
+
+
+      </header>
+    
+
+    
+      <div class="article-meta">
+        <a href="/2019/10/26/Gusubei/" class="article-date">
+  <time datetime="2019-10-26T03:43:50.000Z" itemprop="datePublished">2019-10-26</time>
+</a>
+        
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/CTF/">CTF</a>
+  </div>
+
+      </div>
+    
+
+    
+      
+    <div class="tocbot"></div>
+
+
+
+
+
+    
+
+    <div class="article-entry" itemprop="articleBody">
+      
+
+
+      
+
+      
+        <p>时间：2019.10.24-25</p>
+<p>地点：东南大学九龙湖校区</p>
+<blockquote>
+<p>摘要：又双叒叕来南京，虽然不在南京上学，但是次数的确多了一些。。。希望下次能去一个陌生的城市</p>
+</blockquote>
+<a id="more"></a>
+
+
+
+<p>#深夜抵达</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K0TOPJ.png" alt=""></p>
+<p>#上午</p>
+<p>CTF在线题，时间真的特别少</p>
+<p>就写了两题WEB</p>
+<h2 id="WEB1"><a href="#WEB1" class="headerlink" title="WEB1"></a>WEB1</h2><p>F12查看源代码看到flag</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K07Sr6.png" alt=""></p>
+<h2 id="WEB2"><a href="#WEB2" class="headerlink" title="WEB2"></a>WEB2</h2><p> <img src="https://s2.ax1x.com/2019/10/26/K0TTbT.png" alt=""></p>
+<p>在js文件中找到flag</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K0TbaF.png" alt=""></p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K07iIe.png" alt=""> </p>
+<h2 id="Misc题"><a href="#Misc题" class="headerlink" title="Misc题"></a>Misc题</h2><p>给了一个wireshark格式的数据包</p>
+<p>分析TCP数据，发现传输flag.txt文件。可以用binwalk分离出一个有密码的压缩包</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K0THVU.png" alt=""></p>
+<p>追踪TCP流发现密码，base64转码获得ctfmima字符。应该是压缩包的密码。</p>
+<p>解压成功但是文件是0字节，这点百思不得其解。</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K0Tq54.png" alt=""> </p>
+<p>#下午</p>
+<p><strong>–WEB靶场渗透记录</strong></p>
+<p>下午的渗透一共有六题，flag（key）分别放在对应的两个靶机上。</p>
+<p>因为第二个靶机就开启了一个端口，而且我拿nmap扫了好几遍都没扫出来，听小欣说flag是在robot.txt中找到的，暂且不表。不过据说两台靶机都是windows运行iis服务，也就是说都是用我最不熟练的aspx和mssql。。。</p>
+<p> <img src="https://s2.ax1x.com/2019/10/26/K07PaD.png" alt=""></p>
+<p>这是我们靶机平台的样子。一种熟悉的感觉扑面而来。</p>
+<p>不过与之前哪些的比赛都不同的是，比赛方居然还还给我们提供了一个工具环境（点击右边的渗透攻击机网页），一个装满了渗透工具的Windows Server2003，远程桌面居然使用的是一个PHP文件，也是第一次使用这种操作，不过使用体验那就比较尴尬了。</p>
+<p>坚持着能用原则，这个win server的确有一些我的电脑所没有的工具，比如后来的关键道具，针对mssql数据库的navicat和我黑苹果下无法使用的御剑扫描器。</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K07PaD.png" alt=""></p>
+<p>攻击机器的全貌。（看系统总觉得自身难保）</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K0Tj2R.png" alt=""></p>
+<h2 id="通过源码泄露攻击MSSQL"><a href="#通过源码泄露攻击MSSQL" class="headerlink" title="通过源码泄露攻击MSSQL"></a>通过源码泄露攻击MSSQL</h2><p>全场拿下的唯一一个真的key（还拿到了不少假的key）是一个分值45分的题目，key被藏在数据库里。其实我这个漏洞发现的很早，当时直接就进入了前几的行列，但是可惜的是之后只能看自己的排名不断下滑。。。<br><img src="https://s2.ax1x.com/2019/10/26/K0TXG9.png" alt=""></p>
+<p>首先扫描靶机1，发现开了三个端口，分别是没啥用的80端口（一个静态页面）和看上去可能有漏洞的8080端口（后台登陆），还有MSSQL的远程登陆端口。</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K0TzKx.png" alt=""><br><img src="https://s2.ax1x.com/2019/10/26/K0Tvx1.png" alt=""><br><img src="https://s2.ax1x.com/2019/10/26/K07pqK.png" alt=""></p>
+<p>一开始尝试使用sqlmap和brup暴力破解系统登陆，但是无果。</p>
+<p>使用御剑扫描8080端口，除了login.aspx和Index.aspx，还有一个压缩文件<a href="http://www.zip。" target="_blank" rel="noopener">www.zip。</a></p>
+<p>这个压缩文件非常可疑，于是马上下载下来。</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K07CVO.png" alt=""></p>
+<p>发现这是网站源码的备份，这就非常舒服了！</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K07eMt.png" alt=""></p>
+<p>在源码中找到web.config文件，发现里面存放着MSSQL的账号和密码</p>
+<p>账号是默认账号sa，密码是pte_sa。</p>
+<p>之前扫描端口也发现MSSQL的端口是开的，所以使用Navicat尝试连接。</p>
+<p>居然成功连接上了。</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K07kPH.png" alt=""></p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K07ERA.png" alt=""></p>
+<p>进入数据库看一看，东西还挺多</p>
+<p>最后在Look_Me表单里找到了我们的key7，这是本场的第一个key，可惜也是最后一个。</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K07VxI.png" alt=""></p>
+<h2 id="通过MSSQL拿shell"><a href="#通过MSSQL拿shell" class="headerlink" title="通过MSSQL拿shell"></a>通过MSSQL拿shell</h2><p><img src="https://s2.ax1x.com/2019/10/26/K07nqf.png" alt=""></p>
+<p>接下里我是想做第三个任务的，查看服务器桌面的flag文件</p>
+<p>因为MSSQL是可以执行system命令的，不过大部分服务器默认关闭了xp_cmdshell,这台靶机也不例外。</p>
+<p>通过命令把这个功能开启即可。</p>
+<p>EXEC sp_configure ‘show advaned options’,1; 开启高级模式</p>
+<p>EXEC sp_configure ‘xp_cmdshell’,1; 开始xp_cmdshell 功能</p>
+<p>RECONFIGURE; 应用更改</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K07AGd.png" alt=""><br><img src="https://s2.ax1x.com/2019/10/26/K07msP.png" alt=""></p>
+<p>测试一下命令能够执行，</p>
+<p>查看一下我们的权限是特权system</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K07QIg.png" alt=""></p>
+<p>理论上进入桌面，就能拿到key加75分了。。。但是我找遍了这个系统下所有的桌面，偏偏没有找到。尝试了寻找隐藏文件，find和where这些命令都用上了。就这个问题困扰了我好久。后来听了大佬们赛后讲解才知道自己又被套路了。</p>
+<p>通过EXEC 来执行cmd命令，就和windows下使用相同。</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K071iQ.png" alt=""><br><img src="https://s2.ax1x.com/2019/10/26/K07KZ8.png" alt=""></p>
+<p>据说需要通过cmd打开3389，然后mstsc连接靶机，才能看到key</p>
+<p>具体为什么。。。</p>
+<p>看下面是大佬3389的图，可以发现key并不是一个文件，而是一个类似网上邻居的东西，key是hahamans 。。。</p>
+<p>内心千万匹。。奔腾而过</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K07MdS.png" alt=""></p>
+<h2 id="一个假的flag"><a href="#一个假的flag" class="headerlink" title="一个假的flag"></a>一个假的flag</h2><p><img src="https://s2.ax1x.com/2019/10/26/K07YMq.png" alt=""></p>
+<p>这题是我在拿到源码的基础上，审计代码，发现登陆之后的界面里存在一个key值。。</p>
+<p>但是这个key值是假的。大佬说就算源码也要做好已经过期的心里准备。比赛方则是更直接地对我说，这是个假的。。</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K078Rs.png" alt=""></p>
+<p>所以解决办法就是从后台登陆，其实理论上也不难。</p>
+<p>查看User表可以看到管理员用户名是 天子（？？？）密码被加密过。应该是md5，不过由于比赛现场没有联网，我就想在本地用工具将123456生成一个md5，写到数据库，然后用这个密码登陆。</p>
+<p>不过最后总是登不上，就这样被两题慢慢地消磨了时间。下午很快就结束了。</p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K073Gj.png" alt=""><br><img src="https://s2.ax1x.com/2019/10/26/K07Gzn.png" alt=""><br><img src="https://s2.ax1x.com/2019/10/26/K07aZT.png" alt="">)<img src="https://s2.ax1x.com/2019/10/26/K07ts0.png" alt=""></p>
+<p>#插曲</p>
+<p>走的时候我们遇到了南京不靠谱的滴滴司机，和我们一起打车的都一个个被接走。我们的司机GPS出了问题，突然显示在了北京。。然后打了电话说保证2分钟到，结果等了我们20分钟，本来我们还有40分钟高铁就要开走了，结果司机一波操作直接断送我们的旅途。(写文时刚得知GPS定位混乱是滴滴公司导致的问题，错怪司机咯)</p>
+<p>虽然后来列车晚点，但是自助取票点已经不能取了，所以只能改签咯。然后做出租回了常熟。 </p>
+<p>两天的时间，从东南辗转到东南，然后终于又回到了东南。</p>
+<p><strong>东南大学vs 东南校区</strong></p>
+<p><img src="https://s2.ax1x.com/2019/10/26/K07NLV.png" alt=""></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2019/10/26/Gusubei/" data-id="ck4pciqlo0001vx2s53br7pzo"
+         class="article-share-link">Share</a>
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CTF/" rel="tag">CTF</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Web%E6%B8%97%E9%80%8F/" rel="tag">Web渗透</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%97%85%E9%80%94%E6%98%AF%E4%B8%80%E5%9C%BA%E4%BF%AE%E8%A1%8C/" rel="tag">旅途是一场修行</a></li></ul>
+
+    </footer>
+
+  </div>
+
+  
+    
+  <nav class="article-nav">
+    
+      <a href="/2019/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8UAF/" class="article-nav-link">
+        <strong class="article-nav-caption">Newer posts</strong>
+        <div class="article-nav-title">
+          
+            IE8的一个释放后重用(UAF)
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2019/10/22/HeapSpray/" class="article-nav-link">
+        <strong class="article-nav-caption">Olde posts</strong>
+        <div class="article-nav-title">HeapSpray入门</div>
+      </a>
+    
+  </nav>
+
+
+  
+
+  
+    
+  <div class="gitalk" id="gitalk-container"></div>
+  
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+
+  
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+  
+<script src="https://cdn.bootcss.com/blueimp-md5/2.10.0/js/md5.min.js"></script>
+
+  <script type="text/javascript">
+    var gitalk = new Gitalk({
+      clientID: '5ae4e05700db25ed5406',
+      clientSecret: '8a38a8cb845b0b6198a0c59cab9df498ac778343',
+      repo: 'migraine-sudo.github.io',
+      owner: 'migraine-sudo',
+      admin: ['migraine-sudo'],
+      // id: location.pathname,      // Ensure uniqueness and length less than 50
+      id: md5(location.pathname),
+      distractionFreeMode: false,  // Facebook-like distraction free mode
+      pagerDirection: 'last'
+    })
+
+  gitalk.render('gitalk-container')
+  </script>
+
+  
+
+</article>
+
+
+
+</section>
+  <footer class="footer">
+  <div class="outer">
+    <div class="float-right">
+      <ul class="list-inline">
+  
+    <li><i class="fe fe-smile-alt"></i> <span id="busuanzi_value_site_uv"></span></li>
+  
+</ul>
+    </div>
+    <ul class="list-inline">
+      <li>&copy; 2019 Migraine</li>
+      <li>Powered by <a href="http://hexo.io/" target="_blank">Hexo</a></li>
+      <li>Theme  <a href="https://github.com/zhwangart/hexo-theme-ocean" target="_blank" rel="noopener">Ocean</a></li>
+    </ul>
+  </div>
+</footer>
+
+</main>
+
+<aside class="sidebar sidebar-specter">
+  
+    <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+    <div class="logo">
+      <a href="/"><img src="/images/fujiang.jpg" alt="Migraine"></a>
+    </div>
+  
+  <ul class="nav nav-main">
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/">Home</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/archives">Archives</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/gallery">Gallery</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/about">About</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/tags">Tags</a>
+      </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link nav-item-search" title="Search">
+        <i class="fe fe-search"></i>
+        Search
+      </a>
+    </li>
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      <div class="totop" id="totop">
+  <i class="fe fe-rocket"></i>
+</div>
+    </li>
+    <li class="nav-item">
+      
+        <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+          <i class="fe fe-feed"></i>
+        </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+  </aside>
+  
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/jquery.justifiedGallery.min.js"></script>
+
+
+<script src="/js/lazyload.min.js"></script>
+
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+  
+<script src="/js/tocbot.min.js"></script>
+
+  <script>
+    // Tocbot_v4.7.0  http://tscanlin.github.io/tocbot/
+    tocbot.init({
+      tocSelector: '.tocbot',
+      contentSelector: '.article-entry',
+      headingSelector: 'h1, h2, h3, h4, h5, h6',
+      hasInnerContainers: true,
+      scrollSmooth: true,
+      positionFixedSelector: '.tocbot',
+      positionFixedClass: 'is-position-fixed',
+      fixedSidebarOffset: 'auto',
+    });
+  </script>
+
+
+
+<script src="/js/ocean.js"></script>
+
+
+</body>
+</html>

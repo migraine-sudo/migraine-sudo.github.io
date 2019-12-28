@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>
+    19江苏省省赛-宿迁 |
+    
+    Migraine</title>
+  
+    <link rel="shortcut icon" href="/favicon.ico">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<script src="/js/pace.min.js"></script>
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+<main class="content">
+  <section class="outer">
+  
+
+<article id="post-19宿迁" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      19江苏省省赛-宿迁
+    </h1>
+  
+  
+
+
+
+
+      </header>
+    
+
+    
+      <div class="article-meta">
+        <a href="/2019/09/22/19%E5%AE%BF%E8%BF%81/" class="article-date">
+  <time datetime="2019-09-22T03:29:31.000Z" itemprop="datePublished">2019-09-22</time>
+</a>
+        
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/CTF/">CTF</a>
+  </div>
+
+      </div>
+    
+
+    
+      
+    <div class="tocbot"></div>
+
+
+
+
+
+    
+
+    <div class="article-entry" itemprop="articleBody">
+      
+
+
+      
+
+      
+        <h1 id="楔子"><a href="#楔子" class="headerlink" title="楔子"></a>楔子</h1><p>又一次长途跋涉，直到我们一行人被过路班车放在宿迁边境，我们仿佛被这个时代剥离。</p>
+<a id="more"></a>
+
+
+<h1 id="正文"><a href="#正文" class="headerlink" title="正文:"></a>正文:</h1><p>如今已经开学，最近总有很多事情缠绕在周围，就像今天早上赶往比赛场地踏过的草坪上飘过的细绒，看似轻轻一抖就能剥离，却总是无法周身无事。</p>
+<p><img src="https://s2.ax1x.com/2019/09/21/nxCsat.png" alt="图片"></p>
+<h2 id="Day-One"><a href="#Day-One" class="headerlink" title="Day One"></a>Day One</h2><p>总是做了这件事，担心另一件事。放在衣橱里的衣服，总有一天会染上原木的味道，而我现在逐渐被愈发腐朽的气味沾染，随着时间的推移，也愈发难以摆脱这种忙碌感。</p>
+<p>就像我今天继续遇到了网络配置危机，就和第一次打AWD的经历一样。急着做渗透而没有将网络完全配置好。<br>事事都想尽善尽美，以至于手忙脚乱，捡了芝麻丢了西瓜。</p>
+<p>比赛是渗透宿迁本地的网络。因为需要授权，所以必须连接比赛场地的有线网络。一开始网站都能打开，但是网站内部的论坛进不去。而且电脑连不上外网，没办法查资料，虽然可以勉强进行测试，但浪费了很多时间。后来发现是因为DNS设置的问题，IPv4用的是学校移动的DNS，改为114.114.114.114就行了，网速也快了很多。只不过那时候上午已经过了一大半。</p>
+<p>这次抽签抽到的三个站，运气是不太好的。我们学校的另一个队伍一个站就挖出六个洞，天时地利人和。我们抽到的三个站，有两个网站都是静态网站，唯一一个动态网站也因为应付测试关闭了和后台交互的功能。而且平时练习的网站都是PHP居多，实战渗透的大多是ASPX或者JSP。<br>而最过分的网站是43开头的那个IP，只有一个80端口开着，网页只打印一个hello world。都说世界上没有绝对安全的系统，但是不能社工的条件下，这个网站真的是绝对安全的QWQ！</p>
+<h3 id="任意密码覆写"><a href="#任意密码覆写" class="headerlink" title="任意密码覆写"></a>任意密码覆写</h3><p>漏洞类型:逻辑漏洞</p>
+<p>队内渗透大佬，比赛刚开始就发现一个高危漏洞。能够实现密码覆写技术，我后来也复现了一下。大佬甚至把版主的账号密码都改了，实在联系不上版主，遂上报了。</p>
+<h3 id="漏洞复现"><a href="#漏洞复现" class="headerlink" title="漏洞复现"></a>漏洞复现</h3><p>关键词</p>
+<blockquote>
+<p>Brup修改返回包<br><a href="https://blog.csdn.net/qq1124794084/article/details/80145822" target="_blank" rel="noopener">扩展思路</a></p>
+</blockquote>
+<p>要测试网站的密码管理，首先创建一个账号，使用自己的手机号注册。</p>
+<p><img src="https://s2.ax1x.com/2019/09/21/nxCBqA.png" alt="图片"></p>
+<p><img src="https://s2.ax1x.com/2019/09/21/nxCyIP.png" alt="图片"></p>
+<p>点击忘记密码，忘记密码经常是逻辑漏洞的爆发点。这里存在一个不需要验证码就能够修改密码的逻辑漏洞。</p>
+<p><img src="https://s2.ax1x.com/2019/09/21/nxC0rd.png" alt=""></p>
+<p>首先在进入修改自己账号密码的界面，填写好用户名和验证码。点击下一步，手机会收到证码。<br><img src="https://s2.ax1x.com/2019/09/21/nxCrVI.png" alt=""><br>在验证码输入界面，点击下一步时候，使用Brup抓包，抓取返回包。<br><img src="https://s2.ax1x.com/2019/09/21/nxCgG8.png" alt=""><br>抓取返回包的方法除了使用Repeater。这次大佬教还教了我一个方法。<br>右击请求包 Do intercept-&gt;Respoense to this request，然后Foward就能抓到这个请求的返回包了。和repearter不同，在intercept中抓取的返回包是可以修改的，这也是我们这次逻辑漏洞的关键-&gt;使用页面替换。<br><img src="https://s2.ax1x.com/2019/09/21/nxCcPf.png" alt=""></p>
+<p>将这次的返回包保存下来，这个返回包就是跳转到重置密码成功的返回包。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">HTTP&#x2F;1.1 302 Found</span><br><span class="line">Cache-Control: private</span><br><span class="line">Content-Length: 187</span><br><span class="line">Content-Type: text&#x2F;html; charset&#x3D;gb2312</span><br><span class="line">Location: &#x2F;SQ12345WEB&#x2F;PersonalCT&#x2F;Loginwjmm3.aspx?CustomerName&#x3D;migraine</span><br><span class="line">Server: Microsoft-IIS&#x2F;7.5</span><br><span class="line">X-AspNet-Version: 2.0.50727</span><br><span class="line">X-Powered-By: ASP.NET</span><br><span class="line">Date: Thu, 19 Sep 2019 02:55:55 GMT</span><br><span class="line">Connection: close</span><br><span class="line"></span><br><span class="line">&lt;html&gt;&lt;head&gt;&lt;title&gt;Object moved&lt;&#x2F;title&gt;&lt;&#x2F;head&gt;&lt;body&gt;</span><br><span class="line">&lt;h2&gt;Object moved to &lt;a href&#x3D;&quot;%2fSQ12345WEB%2fPersonalCT%2fLoginwjmm3.aspx%3fCustomerName%3dmigraine&quot;&gt;here&lt;&#x2F;a&gt;.&lt;&#x2F;h2&gt;</span><br><span class="line">&lt;&#x2F;body&gt;&lt;&#x2F;html&gt;</span><br></pre></td></tr></table></figure>
+<p><img src="https://s2.ax1x.com/2019/09/21/nxChrj.png" alt=""><br><br><br></p>
+<p>之后的操作就不需要我们自己的账号和手机了。</p>
+<p>通过这个返回包我们已经可以修改任意用户的密码了。<br>接下来我们尝试修改周同学账号的密码<br>账号名18852436086</p>
+<p>进入忘记密码的界面，输入账号。 (因为隐私问题，就不发图了)</p>
+<p>进入验证码随意写一个验证码再次，抓取返回包。<br><img src="https://s2.ax1x.com/2019/09/21/nxCRxg.png" alt=""></p>
+<p>设置抓取这个请求包的返回包.</p>
+<p><img src="https://s2.ax1x.com/2019/09/21/nxCoaq.png" alt="">  </p>
+<p>继续forward直到看到返回包  </p>
+<p><img src="https://s2.ax1x.com/2019/09/21/nxCqRU.png" alt="">   </p>
+<p>把之前抓到的返回包替换这个返回包<br>将下面包中的用户名migriane替换为18852436086<br>其中的migraine也就是用户名，包内两处都修改为我们需要修改的账号名。如果是中文需要URL编码。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">HTTP&#x2F;1.1 302 Found</span><br><span class="line">Cache-Control: private</span><br><span class="line">Content-Length: 187</span><br><span class="line">Content-Type: text&#x2F;html; charset&#x3D;gb2312</span><br><span class="line">Location: &#x2F;SQ12345WEB&#x2F;PersonalCT&#x2F;Loginwjmm3.aspx?CustomerName&#x3D;migraine</span><br><span class="line">Server: Microsoft-IIS&#x2F;7.5</span><br><span class="line">X-AspNet-Version: 2.0.50727</span><br><span class="line">X-Powered-By: ASP.NET</span><br><span class="line">Date: Thu, 19 Sep 2019 02:55:55 GMT</span><br><span class="line">Connection: close</span><br><span class="line"></span><br><span class="line">&lt;html&gt;&lt;head&gt;&lt;title&gt;Object moved&lt;&#x2F;title&gt;&lt;&#x2F;head&gt;&lt;body&gt;</span><br><span class="line">&lt;h2&gt;Object moved to &lt;a href&#x3D;&quot;%2fSQ12345WEB%2fPersonalCT%2fLoginwjmm3.aspx%3fCustomerName%3dmigraine&quot;&gt;here&lt;&#x2F;a&gt;.&lt;&#x2F;h2&gt;</span><br><span class="line">&lt;&#x2F;body&gt;&lt;&#x2F;html&gt;</span><br></pre></td></tr></table></figure>
+
+<p>替换完成之后继续Forward，直到成功进入修改界面。<br>如果提示修改错误，可能是因为用户名是中文的，没有URL加密。</p>
+<p><img src="https://s2.ax1x.com/2019/09/21/nxC4qs.png" alt=""></p>
+<p><img src="https://s2.ax1x.com/2019/09/21/nxCIZn.png" alt=""></p>
+<p>大佬还把版主的密码改了[已经上报]，发现版主没有绑定手机号，然后就绑了周同学的手机号。所以我们一度不知道，该怎么转告版主。后来上报了就没问题了。</p>
+<p><img src="https://s2.ax1x.com/2019/09/21/nxCbGT.png" alt=""></p>
+<h3 id="其他的一些渗透记录"><a href="#其他的一些渗透记录" class="headerlink" title="其他的一些渗透记录:"></a>其他的一些渗透记录:</h3><p>也是对第一个网站的测试，扫出可能的后台地址，但是显示目前功能已经关闭。<br><img src="https://s2.ax1x.com/2019/09/21/nxCvL9.png" alt=""></p>
+<p><img src="https://s2.ax1x.com/2019/09/21/nxCXM4.png" alt=""></p>
+<p>网站同时还在使用密码明文传输，容易被窃听。<br><img src="https://s2.ax1x.com/2019/09/21/nxPCi6.png" alt=""></p>
+<p>第一个网站，验证码直接可以复制，爆破时候可以用得着。但是因为有密码覆写漏洞，所以这个漏洞也失去了作用。</p>
+<p><img src="https://s2.ax1x.com/2019/09/21/nxCjsJ.png" alt=""></p>
+<p>第三个网站开了一个80端口，然后只给我们一个hello world界面。非常怀疑是删站跑路了。<br><img src="https://s2.ax1x.com/2019/09/21/nxCzZR.png" alt=""></p>
+<p>自古渗透十分钟，写报告两小时。后来我们虽然将这个绝对安全的网站去比赛组换了一个新的，但是也没有时间去进行仔细的测试了。我只测试了XSS漏洞，但是没有绕过过滤。过滤端在服务器后端，所以没办法看到是黑名单还是白名单。大佬说有CSRF，但是因为时间较晚，忙于写测试报告，我们就没有时间做了。比赛也就逐渐走到尾声。</p>
+<p>晚上正好赶上宿迁的第一届国际沙雕节，我们来沙雕节看沙雕，而看沙雕的人在看我们。<br><img src="https://s2.ax1x.com/2019/09/21/nxPpIx.png" alt=""></p>
+<p>这次比赛让人兴奋的另一点，便是能和上次在贵阳之行的舍友在一起比赛。甚至我们这几个老熟人非常巧合地，都是同一个桌子上比赛的。晚上在旅馆的房间里进行了一场聚会。一群男人果然总会产生一些奇奇怪怪的化学反应。<br>当然，更多的细节无需多问，”别问，问就是刘师傅有话说” ，已经形成一个梗，现已加入肯德基豪华午餐。</p>
+<h2 id="Day-Two"><a href="#Day-Two" class="headerlink" title="Day Two"></a>Day Two</h2><p>第二天颁奖，才得知自己又双叒叕拿了三等奖。这次就差了一名就能拿到二等了，就这么与2000块钱奖金擦肩而过。这已经是最近几天第二次获得三等奖级别的东西(奖学金也是三等的我哭了)</p>
+<p><img src="https://s2.ax1x.com/2019/09/21/nxPSd1.png" alt=""></p>
+<p>这天下午听了很久的讲座，依旧讲了许多网安方面的东西。印象深刻的就是一个关于隐私泄露的讲座。</p>
+<p>演讲主题是 这是最好的时代，也是最坏的时代。<br>主要讲述关于现代社会隐私保护所面临的严峻形势。通过对IOS的一些功能进行展示，向我们揭示了我们对隐私泄露面前的是那么脆弱。</p>
+<p>用IOS的小伙伴可以尝试一下，在设置-隐私-定位服务-系统服务-重要地点可以将个人最近几个月的行程都全部获取，甚至可以通过数据分析来分析家庭住址等。如果IOS失窃或者被恶意植入后门，后果可想而知。<br>另一个IOS在信息安全方面的功能，便是最近让苹果很捉急的窃听功能，在控制中心-自定义控制可以打开”听觉”功能，会大大加强对白噪声的解析能力，之后上拉工具栏开启这个功能，手机可以非常清晰地听到别人的窃窃私语。同样，这些功能一旦被非法使用，我们的一举一动都是在聚光灯下的。</p>
+<p><img src="https://s2.ax1x.com/2019/09/21/nxPPJK.png" alt=""></p>
+<p>晚宴是一群大佬的晚宴，我们只是陪衬，真的大佬都是坐中间的超大桌的，我们就当来蹭一顿饭啦。我们五个人和另一个南信的队伍拼了一桌，发现居然有写眼熟。这才发现一年前的暑假，我们去南信大培训的时候，正是一间教室的同学，而当时我们都只是刚接触信息安全的萌新，而如今都是各自队伍的队长了。</p>
+<p>还记得在南信大，是天融信的一个小哥哥给我们做的培训，讲了WEB安全，还使用了MSF攻击了靶机，而也正是那一次经历把我带进了CTF。怪不得总觉得某个在比赛场边走来走去的小哥哥很眼熟，直到后来我看到他出现在天融信的窗口处。<br>缘，妙不可言。</p>
+<p>晚宴结束，明早我们就将踏上归途，回归正常的学习和上课的。</p>
+<p>每次的旅途中，我都会做噩梦，梦到自己醒来在自己的高中课堂上，然后被吓醒。</p>
+  <br>
+
+<h1 id="结尾"><a href="#结尾" class="headerlink" title="结尾:"></a>结尾:</h1><p>这次旅程算是我这个忙碌的暑假的延续，从假期刚开始的上海到南京，再到去贵阳，在如皋实训，接下来就是这次来宿迁。<br>在那之前，我一直以为自己会悠闲地度过最后一个舒适的暑假，每天保持重复一样的事情，就如同两年前的那个自己。但是如今，我却早早地踏上这个颠沛的孤舟。<br>一路上，散落了很多东西，生活曾经被打乱。但同时也得到了一些，只有在漫长而痛苦的孤独中才能获得的东西。</p>
+<p>而这所有的伊始，都要从2018年的那一个炎热的夏天说起。。。</p>
+<p>End</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2019/09/22/19%E5%AE%BF%E8%BF%81/" data-id="ck4pciqmr000svx2s2q2o5vhp"
+         class="article-share-link">Share</a>
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CTF/" rel="tag">CTF</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Web%E6%B8%97%E9%80%8F/" rel="tag">Web渗透</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%97%85%E9%80%94%E6%98%AF%E4%B8%80%E5%9C%BA%E4%BF%AE%E8%A1%8C/" rel="tag">旅途是一场修行</a></li></ul>
+
+    </footer>
+
+  </div>
+
+  
+    
+  <nav class="article-nav">
+    
+      <a href="/2019/09/30/pwnwnwn-Assemble/" class="article-nav-link">
+        <strong class="article-nav-caption">Newer posts</strong>
+        <div class="article-nav-title">
+          
+            PWN题做题记录WP汇总（长期更新）
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2019/08/17/%E7%B2%BE%E8%8B%B1%E8%AE%A1%E5%88%92CTP%E5%9F%B9%E8%AE%AD%E8%AE%B0%E5%BD%95/" class="article-nav-link">
+        <strong class="article-nav-caption">Olde posts</strong>
+        <div class="article-nav-title">精英计划CTP-贵阳</div>
+      </a>
+    
+  </nav>
+
+
+  
+
+  
+    
+  <div class="gitalk" id="gitalk-container"></div>
+  
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+
+  
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+  
+<script src="https://cdn.bootcss.com/blueimp-md5/2.10.0/js/md5.min.js"></script>
+
+  <script type="text/javascript">
+    var gitalk = new Gitalk({
+      clientID: '5ae4e05700db25ed5406',
+      clientSecret: '8a38a8cb845b0b6198a0c59cab9df498ac778343',
+      repo: 'migraine-sudo.github.io',
+      owner: 'migraine-sudo',
+      admin: ['migraine-sudo'],
+      // id: location.pathname,      // Ensure uniqueness and length less than 50
+      id: md5(location.pathname),
+      distractionFreeMode: false,  // Facebook-like distraction free mode
+      pagerDirection: 'last'
+    })
+
+  gitalk.render('gitalk-container')
+  </script>
+
+  
+
+</article>
+
+
+
+</section>
+  <footer class="footer">
+  <div class="outer">
+    <div class="float-right">
+      <ul class="list-inline">
+  
+    <li><i class="fe fe-smile-alt"></i> <span id="busuanzi_value_site_uv"></span></li>
+  
+</ul>
+    </div>
+    <ul class="list-inline">
+      <li>&copy; 2019 Migraine</li>
+      <li>Powered by <a href="http://hexo.io/" target="_blank">Hexo</a></li>
+      <li>Theme  <a href="https://github.com/zhwangart/hexo-theme-ocean" target="_blank" rel="noopener">Ocean</a></li>
+    </ul>
+  </div>
+</footer>
+
+</main>
+
+<aside class="sidebar sidebar-specter">
+  
+    <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+    <div class="logo">
+      <a href="/"><img src="/images/fujiang.jpg" alt="Migraine"></a>
+    </div>
+  
+  <ul class="nav nav-main">
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/">Home</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/archives">Archives</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/gallery">Gallery</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/about">About</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/tags">Tags</a>
+      </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link nav-item-search" title="Search">
+        <i class="fe fe-search"></i>
+        Search
+      </a>
+    </li>
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      <div class="totop" id="totop">
+  <i class="fe fe-rocket"></i>
+</div>
+    </li>
+    <li class="nav-item">
+      
+        <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+          <i class="fe fe-feed"></i>
+        </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+  </aside>
+  
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/jquery.justifiedGallery.min.js"></script>
+
+
+<script src="/js/lazyload.min.js"></script>
+
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+  
+<script src="/js/tocbot.min.js"></script>
+
+  <script>
+    // Tocbot_v4.7.0  http://tscanlin.github.io/tocbot/
+    tocbot.init({
+      tocSelector: '.tocbot',
+      contentSelector: '.article-entry',
+      headingSelector: 'h1, h2, h3, h4, h5, h6',
+      hasInnerContainers: true,
+      scrollSmooth: true,
+      positionFixedSelector: '.tocbot',
+      positionFixedClass: 'is-position-fixed',
+      fixedSidebarOffset: 'auto',
+    });
+  </script>
+
+
+
+<script src="/js/ocean.js"></script>
+
+
+</body>
+</html>

