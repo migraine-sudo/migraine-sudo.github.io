@@ -7,6 +7,7 @@
 <link rel="apple-touch-icon" sizes="152x152" href="images/icons/icon-152x152.png">
 <link rel="apple-touch-icon" sizes="180x180" href="images/icons/icon-192x192.png">
 <link rel="apple-touch-icon" sizes="167x167" href="images/icons/icon-192x192.png">
+<meta name="google-site-verification" content="L5kWE5AiVRVNF1nYqMGyNoUu7WToxJIl3d8MmFk4Cjw" />
   <meta charset="utf-8">
   
   
@@ -107,8 +108,7 @@
 <p>URL优化，安装hexo-abbrlink</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm install hexo-abbrlink --save</span><br></pre></td></tr></table></figure>
 
-
-
+<p>将站点添加到<a href="https://search.google.com/search-console/welcome?hl=zh-CN&utm_source=wmx&utm_medium=deprecation-pane&utm_content=home" target="_blank" rel="noopener">Google Search Console</a>，将站点生成的TEXT写到head.ejs里就行了，然后点验证。</p>
 <p><strong>LAB3</strong></p>
 <p>理解了用户态的空间和内核态空间的关系，实验终于进入了用户态的部分。用户态的内存空间和内核态很接近，UTOP以上的部分（内核）都是照搬内核态下的。一旦进入用户态之后，要再进入内核态就需要调用中断了。</p>
 <p>创建用户态空间并且加载程序的过程和boot加载kern比较接近，而且更简单。第一部分大概实现了一个ELF加载器，并且为用户空间做好了分页管理。一个非常有趣的过程。完成这部分也可以思考一下ASLR在Linux上是怎么实现的了。</p>
