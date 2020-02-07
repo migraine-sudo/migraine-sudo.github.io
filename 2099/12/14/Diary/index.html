@@ -90,7 +90,74 @@
 <p>也许有一天你失去了希望，回头看一看自己一路上的所有幻想</p>
 <p>也许你会忽然重新找到希望</p>
 <a id="more"></a>
+<p>#2020.2.x<br><strong><em>黑苹果完美计划</em></strong></p>
+<p><strong>亮度调节：</strong>发现可以调节，只是自己的快捷键需要重新设置，夜晚终于不刺眼了。我之前几个月的夜是怎么熬过来的？</p>
+<p><strong>声卡驱动：</strong>插入耳机还需要手动调整才能更改播音设备，还是驱动问题，换个驱动注入就行了。</p>
+<p><strong>网卡驱动：</strong>网卡的确无解，淘宝买了一张原装卡（94360CS2）+转接卡。<strong><em>FOR AIRDROP and HANDOFF</em></strong></p>
+<h1 id="2020-2-7"><a href="#2020-2-7" class="headerlink" title="2020.2.7"></a>2020.2.7</h1><p><strong>为博客做SEO优化</strong></p>
+<p><a href="https://www.jianshu.com/p/8b9645fc17cf" target="_blank" rel="noopener">参考</a></p>
+<p>首先安装<code>sitemap</code>和百度版本的<code>sitemap</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">npm install hexo-generator-sitemap --save</span><br><span class="line">npm install hexo-generator-baidu-sitemap --save</span><br></pre></td></tr></table></figure>
 
+<p>打开配置文件<code>_config.yml</code>添加</p>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-tag">sitemap</span>:</span><br><span class="line"><span class="selector-tag">path</span>: <span class="selector-tag">sitemap</span><span class="selector-class">.xml</span></span><br><span class="line"><span class="selector-tag">baidusitemap</span>:</span><br><span class="line"><span class="selector-tag">path</span>: <span class="selector-tag">baidusitemap</span><span class="selector-class">.xml</span></span><br></pre></td></tr></table></figure>
+
+<h1 id="2020-2-5"><a href="#2020-2-5" class="headerlink" title="2020.2.5"></a>2020.2.5</h1><p><strong><em>MARK一些js exploit的链接</em></strong></p>
+<ul>
+<li><p><strong>v8</strong></p>
+</li>
+<li><p><a href="https://www.jaybosamiya.com/blog/2019/01/02/krautflare/#a-new-hope" target="_blank" rel="noopener">利用Chrome V8：Krautflare（35C3 CTF 2018）</a></p>
+<ul>
+<li><a href="https://changochen.github.io/2019-04-29-starctf-2019.html" target="_blank" rel="noopener">* CTF 2019 oob-v8</a></li>
+</ul>
+</li>
+<li><p><a href="https://xz.aliyun.com/t/6507#toc-1" target="_blank" rel="noopener">v8漏洞-RealWorld CTF2019</a></p>
+<ul>
+<li><a href="https://xz.aliyun.com/t/5190" target="_blank" rel="noopener">v8 exploit入门[PlaidCTF roll a d8]</a></li>
+</ul>
+</li>
+<li><p><a href="https://www.freebuf.com/vuls/203721.html" target="_blank" rel="noopener">从一道CTF题零基础学V8漏洞利用</a></p>
+<ul>
+<li><a href="https://gtoad.github.io/2019/08/02/V8-CVE-2017-5070/" target="_blank" rel="noopener">V8引擎CVE-2017-5070</a></li>
+</ul>
+</li>
+<li><p><strong>chakra</strong></p>
+</li>
+<li><p><a href="https://blogs.projectmoon.pw/2018/10/26/Chakra-JIT-Loop-LandingPad-ImplicitCall-Bypass/" target="_blank" rel="noopener">Chakra JIT Loop LandingPad ImplicitCall Bypass</a></p>
+<ul>
+<li><a href="http://13.58.107.157/archives/7277" target="_blank" rel="noopener">从CVE-2018-8355零基础学Chakracore漏洞利用</a></li>
+<li><a href="https://bruce30262.github.io/Chakrazy-exploiting-type-confusion-bug-in-ChakraCore/" target="_blank" rel="noopener">Chakrazy – exploiting type confusion bug in ChakraCore engine</a></li>
+</ul>
+</li>
+<li><p><a href="https://www.anquanke.com/post/id/175722" target="_blank" rel="noopener">Edge 零基础漏洞利用</a>&lt;-实际内容是个chakra的洞</p>
+</li>
+<li><p><strong>FIND VULN</strong></p>
+<ul>
+<li><a href="http://cea.ceaj.org/CN/article/downloadArticleFile.do?attachType=PDF&id=37777" target="_blank" rel="noopener">JavaScript引擎漏洞检测方法综述</a></li>
+</ul>
+</li>
+</ul>
+<h1 id="2020-2-3"><a href="#2020-2-3" class="headerlink" title="2020.2.3"></a>2020.2.3</h1><p>第一次从源代码角度来看syscall，这是一段非常奇妙的体验。</p>
+<ul>
+<li><p>如何从一个中断陷入，到执行一个系统调用。</p>
+</li>
+<li><p>如何传递参数。从用户态到内核态，如何在两者之间传递参数。</p>
+</li>
+<li><p>文件和文件描述符，一个相当于是电话，一个相当于电话号码。两者并不绑定，是可以拆分的。详见DUP源码。</p>
+</li>
+</ul>
+<h1 id="2020-1-31"><a href="#2020-1-31" class="headerlink" title="2020.1.31"></a>2020.1.31</h1><p>终于结束了LAB2的学习，这个LAB其实还花了不少时间，中间经历了过年回老家还有生了场小病。</p>
+<p>LAB2的确挺抽象的，关键点是很多实现和我预计的不太一样，就如我实验报告里写的</p>
+<blockquote>
+<p>页表的实现也是我唯一看代码比看图还要抽象的东西。</p>
+</blockquote>
+<hr>
+<p>第一次发现imessage那么有意思（一切来源于一次Game Center加好友行为），当然，之前那个imessage漏洞利用也是很有意思的。</p>
+<h1 id="2020-1-29"><a href="#2020-1-29" class="headerlink" title="2020.1.29"></a>2020.1.29</h1><p>爱情公寓5第22集太有意义了，完美反应了现在的中国互联网现状(也许是全球)，非常建议看一看。全程的笑料一大把，但是却是一点都笑不出来…</p>
+<p>正如片中引用的话:</p>
+<blockquote>
+<p>雪崩发生的时候，没有一颗雪花是无辜的；但没有一颗雪花会为此负责。</p>
+</blockquote>
 <h1 id="2020-1-27"><a href="#2020-1-27" class="headerlink" title="2020.1.27"></a>2020.1.27</h1><p><strong>Not a good Morning</strong></p>
 <ul>
 <li><p>为什么这么不真实？</p>
@@ -112,7 +179,7 @@
 <p>当然是第一个0day咯！</p>
 </li>
 </ul>
-<p>凌晨时分，</p>
+<p><strong><em>凌晨时分，</em></strong></p>
 <p>看了手机里存着的视频，看了微视里上传的视频，还看了之前自己写的文章，回想了自己这段时间来的所有经历。</p>
 <p>恍惚间觉得有点像梦境，原来这就是我大学的生活，回过头来看，每一帧画面都是那么充满回忆，无论是在去往别的城市的路上，还是在校园的球场上。让我从一个旁观者的角度看，原来我的大学生活，一直都很幸福，让人羡慕。</p>
 <p>而过去的我却对自己大学的印象却掺杂着更多的情愫。</p>
@@ -122,7 +189,9 @@
 <blockquote>
 <p>深度确信自己经历过幸福，才会学会珍惜自己拥有的，而不是羡慕别人。</p>
 </blockquote>
-<h1 id="2020-1-23"><a href="#2020-1-23" class="headerlink" title="2020.1.23"></a>2020.1.23</h1><p>总结了一下上学期末对browser漏洞的一些感悟和心得，投稿到了安全客。(链接待填坑)。</p>
+<h1 id="2020-1-23"><a href="#2020-1-23" class="headerlink" title="2020.1.23"></a>2020.1.23</h1><p>总结了一下上学期末对browser漏洞的一些感悟和心得，投稿到了安全客-&gt;<a href="https://www.anquanke.com/post/id/197621" target="_blank" rel="noopener">跳转链接</a>。</p>
+<p>上了安全客的推荐作者，还是很幸运的。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/CITyXU.png" alt="CITyXU"></p>
 <h1 id="2020-1-19"><a href="#2020-1-19" class="headerlink" title="2020.1.19"></a>2020.1.19</h1><blockquote>
 <p>海风吹过的夏天，仿佛从来你都在我视线    ——《靠近》</p>
 </blockquote>
@@ -196,14 +265,14 @@
 </ul>
 <h1 id="2019-12-29"><a href="#2019-12-29" class="headerlink" title="2019.12.29"></a>2019.12.29</h1><p>博客更换了一下主题，Ocean主题在手机端的适配真的很棒，还有相册功能，假期里打算好好挖掘一下。</p>
 <p>期末还剩最后一门算法复习，复习了几个点觉得挺有意思的</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">1.很多算法伪代码循环用while，写出来就很漂亮,while直接省去了for内部再做if判断的代码，比我的多个for循环叠加好看多了。。。（角度错）</span><br><span class="line">例子:一个简单的暴力字符串匹配伪代码（P为字符串[长度n]、T为模式[长度m]）</span><br><span class="line">BruteForceStringMatch</span><br><span class="line">for i &lt;-0 to n-m do</span><br><span class="line">	while j&lt;m and P[j+i]&#x3D;&#x3D;T[j] do</span><br><span class="line">		j &lt;- j+1</span><br><span class="line">		if j&#x3D;&#x3D;m return i</span><br><span class="line">return -1</span><br><span class="line"></span><br><span class="line">2.减治法和分治法的区别。</span><br><span class="line">后者是分而治之，最后存在一个合并动作，而前者则不存在合并动作，应用场景例如二分法、插入排序之类。效率自然是高于后者，不过应用似乎需要一定的条件。例如二分法需要有序序列。</span><br><span class="line">3.计算递归算法的时间复杂度。这部分也非常有趣，通过数学方法来评判一个算法的复杂度。</span><br><span class="line">4.限位器对时间复杂度的影响</span><br><span class="line">5.排序算法在位性和稳定性</span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">1.</span>很多算法伪代码循环用<span class="keyword">while</span>，写出来就很漂亮,<span class="keyword">while</span>直接省去了<span class="keyword">for</span>内部再做<span class="keyword">if</span>判断的代码，比我的多个<span class="keyword">for</span>循环叠加好看多了。。。（角度错）</span><br><span class="line">例子:一个简单的暴力字符串匹配伪代码（P为字符串[长度n]、T为模式[长度m]）</span><br><span class="line">BruteForceStringMatch</span><br><span class="line"><span class="keyword">for</span> i &lt;<span class="number">-0</span> to n-m <span class="keyword">do</span></span><br><span class="line">	<span class="keyword">while</span> j&lt;m <span class="keyword">and</span> P[j+i]==T[j] <span class="keyword">do</span></span><br><span class="line">		j &lt;- j+<span class="number">1</span></span><br><span class="line">		<span class="keyword">if</span> j==m <span class="keyword">return</span> i</span><br><span class="line"><span class="keyword">return</span> <span class="number">-1</span></span><br><span class="line"></span><br><span class="line"><span class="number">2.</span>减治法和分治法的区别。</span><br><span class="line">后者是分而治之，最后存在一个合并动作，而前者则不存在合并动作，应用场景例如二分法、插入排序之类。效率自然是高于后者，不过应用似乎需要一定的条件。例如二分法需要有序序列。</span><br><span class="line"><span class="number">3.</span>计算递归算法的时间复杂度。这部分也非常有趣，通过数学方法来评判一个算法的复杂度。</span><br><span class="line"><span class="number">4.</span>限位器对时间复杂度的影响</span><br><span class="line"><span class="number">5.</span>排序算法在位性和稳定性</span><br></pre></td></tr></table></figure>
 
 <h1 id="2019-12-21"><a href="#2019-12-21" class="headerlink" title="2019.12.21"></a>2019.12.21</h1><p><strong>关于插桩方面的内容</strong></p>
 <p><a href="https://www.blackhat.com/docs/eu-17/materials/eu-17-Polino-Hiding-Pins-Artifacts-To-Defeat-Evasive-Malware.pdf" target="_blank" rel="noopener">BlackHat议题</a></p>
 <p><a href="https://zhuanlan.kanxue.com/article-345.htm" target="_blank" rel="noopener">IOS下的Frida</a></p>
 <p><a href="http://www.sohu.com/a/246175537_557054" target="_blank" rel="noopener">抢红包插件</a></p>
 <p><strong>晚间</strong></p>
-<p>又是雨天，在考研的苏城，仿佛能看到《天气之子》中东京的海市蜃楼。</p>
+<p>又是雨天，在考研的苏城，仿佛能看到<strong><em>《天气之子》</em></strong>中东京的<strong>海市蜃楼</strong>。</p>
 <p>与你穿梭在雨里，是最美好的一部分。</p>
 <h1 id="2019-12-20"><a href="#2019-12-20" class="headerlink" title="2019.12.20"></a>2019.12.20</h1><p>2019年12月20日，我们被挡在考场外，门外也有一些考生在门口踌躇，使劲地朝里张望，里面熙熙攘攘地出来一些中学生，伞外青黄不接的雨景仿佛也在叙说苏州今晚的寒冷。<br><strong>/1</strong><br>虽然看不了考场，我们去吃了鑫花溪，上一次吃可能是初升高的时候了，不知是自己和这个川妹子待久了还是花溪口味变淡了，竟然尝不出辣味了。角落里传来“我在贵州等你的声音，我忽然才意识，这是贵州地区食物诶（这里需要call一下贵州认识的小伙伴们，还要感谢网安让我们相遇<br><strong>/2</strong><br>明天就要考试了，也许一年后我也将站在这个位置。<br>无数次梦境里，对未来的不确定和纠结，再次涌上心头。幸运的是，一路走来也遇到，一些在我眼中如导师般的人，让我更加坚定自己的选择。<br><strong>/3</strong><br>很快，生活规律将会有所改变，但也不会改变很多。<br>因为宝贝，我经历了学校的每一天最晚的钟声，每一天在保安大叔敲门声中，最后一批离开实验室的日子。<br>静下心来做一件事情，有时候对我很难，但是有你在我身边的时候，我就会很平静，效率有时候会很高。<br>生活习惯方面，自己目前的生活习惯比之前的两年都要好（除了已经荒废的撸铁行为…<br>习惯是会潜移默化地传染的，我很高兴染上这些。</p>
 <p>最后，过去近一年的时间里，有你陪伴，真的太幸福了。<br>祝我家糖宝宝，明后考试顺利到不能再顺利呐！</p>
@@ -266,7 +335,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2099/12/14/Diary/" data-id="ck4pomc7w000xpo2sbn7u9jk9"
+      <a data-url="https://migraine-sudo.github.io/2099/12/14/Diary/" data-id="ck4pomc7w000xpo2sbn7u9jk9"
          class="article-share-link">Share</a>
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Diary/" rel="tag">Diary</a></li></ul>
@@ -280,9 +349,9 @@
   <nav class="article-nav">
     
     
-      <a href="/2020/01/25/how2heap3/" class="article-nav-link">
+      <a href="/2020/01/27/how2heap4/" class="article-nav-link">
         <strong class="article-nav-caption">Olde posts</strong>
-        <div class="article-nav-title">How2Heap堆利用学习笔记(三):Unsafe_unlink</div>
+        <div class="article-nav-title">How2Heap堆利用学习笔记(四)House Of Spirit/poison_null_byte</div>
       </a>
     
   </nav>
