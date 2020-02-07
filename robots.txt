@@ -3,7 +3,7 @@ Allow: /
 Allow: /home/
 Allow: /archives/
 Allow: /gallery/
-Allow: /about/
+Disallow: /about/
 Disallow: /images/
 Disallow: /css/
 Disallow: /js/
