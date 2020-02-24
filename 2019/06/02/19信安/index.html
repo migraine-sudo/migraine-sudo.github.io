@@ -18,7 +18,7 @@
   <title>
     2019全国大学生信息安全大赛线下初体验   --体验黑客的儿童节 |
     
-    Migraine</title>
+    Migraine殇</title>
   
     <link rel="shortcut icon" href="/fujiang.jpg">
   
@@ -95,7 +95,7 @@
 <h1 id="Day0"><a href="#Day0" class="headerlink" title="Day0"></a>Day0</h1><blockquote>
 <p>这场比赛的线上赛，大概是在四月份吧，也就这个学期的起始。但是转眼一瞬，线下选拔赛便是两个月之后，就快要抓不住学期的尾巴。</p>
 </blockquote>
-<p>几个月之后便是大三的学生了，将要考虑未来的方向。这学期花了很多时间来做自己的事情，学习自己想学的东西，课程甚至都有一些放下了。花了很多时间来学习pwn，但是依旧是个pwn菜鸡。</p>
+<p>几个月之后便是大三的学生了，将要考虑未来的方向。这学期花了很多时间来做自己的事情，学习自己想学的东西，课程甚至都有一些放下了。花了很多课余时间来学习（入门）pwn，但是依旧是个pwn菜鸡。</p>
 <p>如果从技术层面来讲，这场比赛晋级的希望很小。如果留在学校打天翼杯，还能留下来陪gf。<br>但单纯从纪念程度上来讲，这场比赛对我来说意义也是非凡。</p>
 <blockquote>
 <p>遥想去年的这场比赛，就是我步入网络安全的第一场比赛。</p>
@@ -104,7 +104,7 @@
 <blockquote>
 <p>但正是这场比赛，从去年开始改变了我的星轨。</p>
 </blockquote>
-<p>而如今终于靠团队和自己的能力进入了分区选拔赛<br>#虽然是某大佬疯狂暗示才晋级的#但没有py哦</p>
+<p>而如今终于靠团队和自己的能力进入了分区选拔赛<br>（虽然途中也遇到了某大佬的推波助澜</p>
 <p>无论如何，这些年的努力没有被白费。老高这次没来，因为他早就预计见了这次比赛的确很难有好的结局，但是我个人坚持来的原因，</p>
 <blockquote>
 <p>还是因为这场梦，必须要圆了它。</p>
@@ -181,7 +181,8 @@
 <p>敲代码就是这样，一小时就像一分钟一样不值钱。一瞬间就到了中午，现场开始发放盒饭。因为找到了绕过方法，所以感觉压力没这么大了，这边的饭除了太硬了太难吃了也没啥缺点了。。<br>至于大鸡腿味道还是可圈可点了。。服务相对来说还是很周到的，有小姐姐/小哥哥给你送饭送菜送餐巾纸送温暖（黑人问号？？？）#好像写偏了     </p>
 <p><img src="https://img-blog.csdnimg.cn/20190603001208300.png" alt="在这里插入图片描述"></p>
 <p> 因为之前在本地pwn成功，服务器pwn总是失败的阴影。而服务器端的libc不清楚，所以有些担心，就先用了其他常用的libc盲写，然后盲打，发现都没有拿到shell。#因为没其他libc 的执行环境，所以叫盲打#我发誓以后肯定要装一个能随意换libc版本的环境，感觉真的好累。<br><img src="https://img-blog.csdnimg.cn/20190603001240843.png" alt="在这里插入图片描述"></p>
-<p>后来比赛还剩几分钟，有些退缩的意思了，于是想本地pwn一下玩玩。用本地libc-2.23.so随便试试。远程第一次失败了#貌似没关context<br>以为pwn不通的，准备等死，结果学长让我再挣扎一下。再pwn 的时候，发现居然成功了。服务器端的libc也是libc.so.6！！！！！！<br>激动到手抖，踉踉跄跄地提交了flag<br> #一开始我对着第四题，疯狂提交，结果一直错，后来他们说我提交错题了。。。太激动了</p>
+<p>后来比赛还剩几分钟，有些退缩的意思了，于是想本地pwn一下玩玩。用本地libc-2.23.so随便试试。远程第一次失败了#貌似没关context<br>以为pwn不通的，准备等死，结果学长让我再挣扎一下。再pwn 的时候，发现居然成功了。服务器端的libc也是glibc2.23！！！！！！<br>激动到手抖，踉踉跄跄地提交了flag</p>
+<p> #一开始我对着第四题，疯狂提交，结果一直错，后来他们说我提交错题了。。。太激动了</p>
 <blockquote>
 <p>#看了下时间，还有六分钟不到平台结束提交。</p>
 </blockquote>
@@ -222,7 +223,7 @@
 <h3 id="Message"><a href="#Message" class="headerlink" title="Message"></a>Message</h3><p><img src="https://img-blog.csdnimg.cn/20190603002359542.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQxOTk2MjQ4,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"><br>放出了解题方案，还是没有队伍解出来。ROP逐位猜解，还是有些不懂。说来惭愧，连登陆都没绕过去的我，这个题目只能吃瓜了。<br><img src="https://img-blog.csdnimg.cn/20190603002418447.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQxOTk2MjQ4,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"><br> 感叹自己二进制分析能力的确有限，昨天的pwn题也是非常依赖学长的分析，否则自己纯分析可能还是很难写出来的。</p>
 <h3 id="Day2赛果"><a href="#Day2赛果" class="headerlink" title="Day2赛果"></a>Day2赛果</h3><p><img src="https://img-blog.csdnimg.cn/20190603002439111.png" alt="在这里插入图片描述"><br> 第二天的pwn一无所获，队里的web手做出一道题。（就是那个//大宝剑） 昨天的加固才成功了一题，所以总排名不是很可观。估计大概分区三等奖吧。#万一built部分崩了也没办法了<br><img src="https://img-blog.csdnimg.cn/20190603002454821.png" alt="在这里插入图片描述"><br>比赛结束之后，我们坐上了回程的商务车，结束了为期两天的南京之行。遗憾还是有的吧，但是更多的是满足。</p>
 <blockquote>
-<p>学pwn这么久，终于到了pwn的主场了</p>
+<p>学pwn这么久(其实也就几个月了啦)，终于到了pwn的主场了</p>
 </blockquote>
 <p>队里的大佬还纠结过六一是留在学校参加天翼杯，还是来比赛，因为学校的比赛奖品颇丰。（后得知留在学校的学长获得了4000-6000左右的比赛奖金）当然咯，我太菜了就不用纠结咯，留在学校也拿不到奖金。</p>
 <blockquote>
@@ -237,7 +238,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://migraine-sudo.github.io/2019/06/02/19%E4%BF%A1%E5%AE%89/" data-id="ck6c0cstx0000922v9a950ds7"
+      <a data-url="https://migraine-sudo.github.io/2019/06/02/19%E4%BF%A1%E5%AE%89/" data-id="ck4pomc8e001hpo2s47np1ph1"
          class="article-share-link">Share</a>
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CTF/" rel="tag">CTF</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%97%85%E9%80%94%E6%98%AF%E4%B8%80%E5%9C%BA%E4%BF%AE%E8%A1%8C/" rel="tag">旅途是一场修行</a></li></ul>
@@ -250,11 +251,11 @@
     
   <nav class="article-nav">
     
-      <a href="/2019/08/17/%E7%B2%BE%E8%8B%B1%E8%AE%A1%E5%88%92CTP%E5%9F%B9%E8%AE%AD%E8%AE%B0%E5%BD%95/" class="article-nav-link">
+      <a href="/2019/07/21/phpunserialize/" class="article-nav-link">
         <strong class="article-nav-caption">Newer posts</strong>
         <div class="article-nav-title">
           
-            精英计划CTP-贵阳
+            PHP反序列化漏洞
           
         </div>
       </a>
@@ -315,7 +316,7 @@
 </ul>
     </div>
     <ul class="list-inline">
-      <li>&copy; 2020 Migraine</li>
+      <li>&copy; 2020 Migraine殇</li>
       <li>Powered by <a href="http://hexo.io/" target="_blank">Hexo</a></li>
       <li>Theme  <a href="https://github.com/zhwangart/hexo-theme-ocean" target="_blank" rel="noopener">Ocean</a></li>
     </ul>
@@ -330,7 +331,7 @@
 <nav class="navbar">
   
     <div class="logo">
-      <a href="/"><img src="/images/fujiang.jpg" alt="Migraine"></a>
+      <a href="/"><img src="/images/fujiang.jpg" alt="Migraine殇"></a>
     </div>
   
   <ul class="nav nav-main">

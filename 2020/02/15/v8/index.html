@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-startup-image" href="images/hexo.png">
+  <link rel="apple-touch-icon" href="images/icons/icon-72x72.png">
+<link rel="apple-touch-icon" sizes="152x152" href="images/icons/icon-152x152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="images/icons/icon-192x192.png">
+<link rel="apple-touch-icon" sizes="167x167" href="images/icons/icon-192x192.png">
+<meta name="google-site-verification" content="L5kWE5AiVRVNF1nYqMGyNoUu7WToxJIl3d8MmFk4Cjw" />
+  <meta charset="utf-8">
+  
+  
+    <meta name="keywords" content="Migraine,个人博客,日记,pwn,二进制,ctf,浏览器">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>
+    v8 Base |
+    
+    Migraine殇</title>
+  
+    <link rel="shortcut icon" href="/fujiang.jpg">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<script src="/js/pace.min.js"></script>
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+<main class="content">
+  <section class="outer">
+  
+
+<article id="post-v8" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      v8 Base
+    </h1>
+  
+  
+
+
+
+
+      </header>
+    
+
+    
+      <div class="article-meta">
+        <a href="/2020/02/15/v8/" class="article-date">
+  <time datetime="2020-02-15T10:41:55.000Z" itemprop="datePublished">2020-02-15</time>
+</a>
+        
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/v8/">v8</a> / <a class="article-category-link" href="/categories/v8/%E6%B5%8F%E8%A7%88%E5%99%A8/">浏览器</a>
+  </div>
+
+      </div>
+    
+
+    
+      
+    <div class="tocbot"></div>
+
+
+
+
+
+    
+
+    <div class="article-entry" itemprop="articleBody">
+      
+
+
+      
+
+      
+        <p><em>学习v8过程中参考了很多资料以及师傅们的博客，在这里把自己实验过的/或者需要速查的内容整理记录下来，里面引用各位师傅的博客的内容都注明了出处，特此致谢。</em></p>
+<a id="more"></a>
+
+<h2 id="V8环境配置"><a href="#V8环境配置" class="headerlink" title="V8环境配置"></a>V8环境配置</h2><p><strong>终端代理</strong></p>
+<p>编译v8必须<em>科学上网</em>，本地使用<strong>crashx</strong>作为代理。</p>
+<p>终端挂代理，将下面的代码写入/etc/bashrc，每次生成终端都会自动进行代理。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">export https_proxy&#x3D;http:&#x2F;&#x2F;127.0.0.1:7890</span><br><span class="line">export http_proxy&#x3D;http:&#x2F;&#x2F;127.0.0.1:7890</span><br><span class="line">export all_proxy&#x3D;socks5:&#x2F;&#x2F;127.0.0.1:7891</span><br></pre></td></tr></table></figure>
+
+<p>或者参考<strong>自动化命令</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">alias setproxy&#x3D;&quot;export https_proxy&#x3D;http:&#x2F;&#x2F;127.0.0.1:7890;export http_proxy&#x3D;http:&#x2F;&#x2F;127.0.0.1:7890;export all_proxy&#x3D;socks5:&#x2F;&#x2F;127.0.0.1:7891;echo \&quot;Set proxy successfully\&quot; &quot;</span><br><span class="line">alias unsetproxy&#x3D;&quot;unset http_proxy;unset https_proxy;unset all_proxy;echo \&quot;Unset proxy successfully\&quot; &quot; </span><br><span class="line">alias ipcn&#x3D;&quot;curl myip.ipip.net&quot;</span><br><span class="line">alias ip&#x3D;&quot;curl ip.sb&quot;</span><br></pre></td></tr></table></figure>
+
+<p><code>curl cip.cc</code>检验代理(crash x开全局)</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/wDfUNM.png" alt="wDfUNM"></p>
+<p><strong>编译v8</strong></p>
+<p><a href="http://eternalsakura13.com/2018/05/06/v8/" target="_blank" rel="noopener">参考链接</a> </p>
+<p>安装依赖</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">apt-get install binutils python2.7 perl socat git build-essential gdb gdbserver</span><br></pre></td></tr></table></figure>
+
+<p><em>1. 准备depot_tools工具</em></p>
+   <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> git <span class="built_in">clone</span> https://chromium.googlesource.com/chromium/tools/depot_tools.git</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> <span class="built_in">echo</span> <span class="string">'export PATH=$PATH:"/path/to/depot_tools"'</span> &gt;&gt; ~/.bashrc		 <span class="comment">#depot_tools的目录</span></span></span><br></pre></td></tr></table></figure>
+
+<p><em>2. ninja准备</em></p>
+  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> git <span class="built_in">clone</span> https://github.com/ninja-build/ninja.git</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> <span class="built_in">cd</span> ninja &amp;&amp; ./configure.py --bootstrap &amp;&amp; <span class="built_in">cd</span> ..</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> <span class="built_in">echo</span> <span class="string">'export PATH=$PATH:"/path/to/ninja"'</span> &gt;&gt; ~/.bashrc</span></span><br></pre></td></tr></table></figure>
+
+<p><em>3. v8编译</em></p>
+<p><em>注意要使用depot_tools下的ninja而不是/usr/bin下的ninja,使用v8gen脚本快速构建toolchain</em></p>
+   <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> fetch v8 &amp;&amp; <span class="built_in">cd</span> v8&amp;&amp; gclient sync <span class="comment">#获取v8源代码同步最新源代码，如果直接clone了fetch命令可以不用</span></span></span><br><span class="line"><span class="meta">$</span><span class="bash"> tools/dev/v8gen.py x64.debug</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> ninja -C out.gn/x64.debug				<span class="comment">#如果只编译d8的话，最后加上d8参数即可</span></span></span><br></pre></td></tr></table></figure>
+
+<p><em>4. 运行d8</em></p>
+   <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> ./out.gn/x64.debug/d8</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> ./out.gn/x64.debug/v8_shell</span></span><br></pre></td></tr></table></figure>
+
+<p>v8漏洞利用在browser pwn中一般有两种形式，都需要对v8进行patch然后再进行编译。</p>
+<ul>
+<li><p>直接使用真实的cve，一般提供commit的hash值。</p>
+<p>在编译v8以前，需要使用<code>git reset --hard hash值</code>来对版本进行回溯–&gt;<a href="">roll a d8</a></p>
+</li>
+<li><p>出题人给出一个patch，人为地在v8制造一个漏洞，一般提供一个diff文件/编译好的v8可执行文件–&gt;<a href="">oob-v8</a></p>
+<p>需要<code>git apply &lt; diff文件</code>将diff文件加入v8源码分支。</p>
+</li>
+</ul>
+<p><strong>范例题目</strong></p>
+<p>例如<em>Star CTF 2019 oob-v8</em>，题目信息，我们需要使用对应版本的v8，然后打上我们的patch。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Yet another off by one</span><br><span class="line"></span><br><span class="line">$ nc 212.64.104.189 10000</span><br><span class="line">the v8 commits is 6dc88c191f5ecc5389dc26efa3ca0907faef3598.</span><br></pre></td></tr></table></figure>
+
+<p>下载v8源代码并且回溯版本，不过因为编译失败，后来还是选择用fetch。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> git <span class="built_in">clone</span> https://github.com/v8/v8.git &amp;&amp; <span class="built_in">cd</span> v8 <span class="comment">#这一步改为fetch v8</span></span></span><br><span class="line"><span class="meta">$</span><span class="bash"> git reset --hard 6dc88c191f5ecc5389dc26efa3ca0907faef3598</span></span><br><span class="line">	Checking out files: 100% (6085/6085), done.</span><br><span class="line">	HEAD is now at 6dc88c1 Update V8 DEPS.</span><br></pre></td></tr></table></figure>
+
+<p>将diff补丁写入代码，然后编译即可。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> git apply &lt; oob.diff</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>diff补丁</strong></p>
+<p>oob.diff</p>
+<figure class="highlight diff"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br></pre></td><td class="code"><pre><span class="line">diff --git a/src/bootstrapper.cc b/src/bootstrapper.cc</span><br><span class="line">index b027d36..ef1002f 100644</span><br><span class="line"><span class="comment">--- a/src/bootstrapper.cc</span></span><br><span class="line"><span class="comment">+++ b/src/bootstrapper.cc</span></span><br><span class="line">@@ -1668,6 +1668,8 @@ void Genesis::InitializeGlobal(Handle&lt;JSGlobalObject&gt; global_object,</span><br><span class="line">                           Builtins::kArrayPrototypeCopyWithin, 2, false);</span><br><span class="line">     SimpleInstallFunction(isolate_, proto, "fill",</span><br><span class="line">                           Builtins::kArrayPrototypeFill, 1, false);</span><br><span class="line"><span class="addition">+    SimpleInstallFunction(isolate_, proto, "oob",</span></span><br><span class="line"><span class="addition">+                          Builtins::kArrayOob,2,false);</span></span><br><span class="line">     SimpleInstallFunction(isolate_, proto, "find",</span><br><span class="line">                           Builtins::kArrayPrototypeFind, 1, false);</span><br><span class="line">     SimpleInstallFunction(isolate_, proto, "findIndex",</span><br><span class="line">diff --git a/src/builtins/builtins-array.cc b/src/builtins/builtins-array.cc</span><br><span class="line">index 8df340e..9b828ab 100644</span><br><span class="line"><span class="comment">--- a/src/builtins/builtins-array.cc</span></span><br><span class="line"><span class="comment">+++ b/src/builtins/builtins-array.cc</span></span><br><span class="line">@@ -361,6 +361,27 @@ V8_WARN_UNUSED_RESULT Object GenericArrayPush(Isolate* isolate,</span><br><span class="line">   return *final_length;</span><br><span class="line"> &#125;</span><br><span class="line"> &#125;  // namespace</span><br><span class="line"><span class="addition">+BUILTIN(ArrayOob)&#123;</span></span><br><span class="line"><span class="addition">+    uint32_t len = args.length();</span></span><br><span class="line"><span class="addition">+    if(len &gt; 2) return ReadOnlyRoots(isolate).undefined_value();</span></span><br><span class="line"><span class="addition">+    Handle&lt;JSReceiver&gt; receiver;</span></span><br><span class="line"><span class="addition">+    ASSIGN_RETURN_FAILURE_ON_EXCEPTION(</span></span><br><span class="line"><span class="addition">+            isolate, receiver, Object::ToObject(isolate, args.receiver()));</span></span><br><span class="line"><span class="addition">+    Handle&lt;JSArray&gt; array = Handle&lt;JSArray&gt;::cast(receiver);</span></span><br><span class="line"><span class="addition">+    FixedDoubleArray elements = FixedDoubleArray::cast(array-&gt;elements());</span></span><br><span class="line"><span class="addition">+    uint32_t length = static_cast&lt;uint32_t&gt;(array-&gt;length()-&gt;Number());</span></span><br><span class="line"><span class="addition">+    if(len == 1)&#123;</span></span><br><span class="line"><span class="addition">+        //read</span></span><br><span class="line"><span class="addition">+        return *(isolate-&gt;factory()-&gt;NewNumber(elements.get_scalar(length)));</span></span><br><span class="line"><span class="addition">+    &#125;else&#123;</span></span><br><span class="line"><span class="addition">+        //write</span></span><br><span class="line"><span class="addition">+        Handle&lt;Object&gt; value;</span></span><br><span class="line"><span class="addition">+        ASSIGN_RETURN_FAILURE_ON_EXCEPTION(</span></span><br><span class="line"><span class="addition">+                isolate, value, Object::ToNumber(isolate, args.at&lt;Object&gt;(1)));</span></span><br><span class="line"><span class="addition">+        elements.set(length,value-&gt;Number());</span></span><br><span class="line"><span class="addition">+        return ReadOnlyRoots(isolate).undefined_value();</span></span><br><span class="line"><span class="addition">+    &#125;</span></span><br><span class="line"><span class="addition">+&#125;</span></span><br><span class="line"> </span><br><span class="line"> BUILTIN(ArrayPush) &#123;</span><br><span class="line">   HandleScope scope(isolate);</span><br><span class="line">diff --git a/src/builtins/builtins-definitions.h b/src/builtins/builtins-definitions.h</span><br><span class="line">index 0447230..f113a81 100644</span><br><span class="line"><span class="comment">--- a/src/builtins/builtins-definitions.h</span></span><br><span class="line"><span class="comment">+++ b/src/builtins/builtins-definitions.h</span></span><br><span class="line">@@ -368,6 +368,7 @@ namespace internal &#123;</span><br><span class="line">   TFJ(ArrayPrototypeFlat, SharedFunctionInfo::kDontAdaptArgumentsSentinel)     \</span><br><span class="line">   /* https://tc39.github.io/proposal-flatMap/#sec-Array.prototype.flatMap */   \</span><br><span class="line">   TFJ(ArrayPrototypeFlatMap, SharedFunctionInfo::kDontAdaptArgumentsSentinel)  \</span><br><span class="line"><span class="addition">+  CPP(ArrayOob)                                                                \</span></span><br><span class="line">                                                                                \</span><br><span class="line">   /* ArrayBuffer */                                                            \</span><br><span class="line">   /* ES #sec-arraybuffer-constructor */                                        \</span><br><span class="line">diff --git a/src/compiler/typer.cc b/src/compiler/typer.cc</span><br><span class="line">index ed1e4a5..c199e3a 100644</span><br><span class="line"><span class="comment">--- a/src/compiler/typer.cc</span></span><br><span class="line"><span class="comment">+++ b/src/compiler/typer.cc</span></span><br><span class="line">@@ -1680,6 +1680,8 @@ Type Typer::Visitor::JSCallTyper(Type fun, Typer* t) &#123;</span><br><span class="line">       return Type::Receiver();</span><br><span class="line">     case Builtins::kArrayUnshift:</span><br><span class="line">       return t-&gt;cache_-&gt;kPositiveSafeInteger;</span><br><span class="line"><span class="addition">+    case Builtins::kArrayOob:</span></span><br><span class="line"><span class="addition">+      return Type::Receiver();</span></span><br><span class="line"> </span><br><span class="line">     // ArrayBuffer functions.</span><br><span class="line">     case Builtins::kArrayBufferIsView:</span><br></pre></td></tr></table></figure>
+
+<p><strong>编译v8的问题汇总</strong></p>
+<p><a href="https://blog.csdn.net/guillotine007/article/details/81152585" target="_blank" rel="noopener">chromium-cipd : golang net/http proxy代理</a></p>
+<p><em>gclient sync的时候提示代理连接失败</em></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[P5912 11:57:20.290 client.go:347 W] RPC failed transiently. Will retry in 1s    &#123;"error":"failed to send request: Post https://chrome-infra-packages.appspot.com/prpc/cipd.Repository/GetInstanceURL: proxyconnect tcp: EOF", "host":"chrome-infra-packages.appspot.com", "method":"GetInstanceURL", "service":"cipd.Repository", "sleepTime":"1s"&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我是通过仅代理http（不使用https和sock5）来实现的(192.168.1.106是我mac主机的地址)我在Ubuntu下执行这个命令</p>
+<p><code>export https_proxy=http://192.168.1.106:7890</code> </p>
+<p><em>提示Error: client not configured; see ‘gclient config’</em></p>
+<p>在v8目录下创建一个.gclient文件，然后执行gclient sync</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">solutions = [</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="attr">"managed"</span>: False,</span><br><span class="line">    <span class="attr">"name"</span>: <span class="string">"src"</span>,</span><br><span class="line">    <span class="attr">"url"</span>: <span class="string">"https://chromium.googlesource.com/chromium/src.git"</span>,</span><br><span class="line">    <span class="attr">"custom_deps"</span>: &#123;&#125;,</span><br><span class="line">    <span class="attr">"deps_file"</span>: <span class="string">".DEPS.git"</span>,</span><br><span class="line">    <span class="attr">"safesync_url"</span>: <span class="string">""</span>,</span><br><span class="line">  &#125;,</span><br><span class="line">]</span><br></pre></td></tr></table></figure>
+
+<p><strong>v8调试基础</strong></p>
+<ul>
+<li><p><strong><em>Google提供的gdb插件 gdb-v8-support.py</em></strong></p>
+<p>可以在/tools目录下找到.gdbinit和gdb-v8-support.py文件，然后在~/.gdbinit文件中source引入py文件，同时将.gdbinit的内容拷贝到～/.gdbinit中</p>
+<p>其中定义了一些方法比如job，可以在gdb中作为辅助使用</p>
+</li>
+</ul>
+<p>![屏幕快照2020-02-09下午9.29.03](<a href="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/屏幕快照" target="_blank" rel="noopener">https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/屏幕快照</a> 2020-02-09 下午9.29.03.png)</p>
+<ul>
+<li><p><strong><em>Allow-natives-syntax参数</em></strong></p>
+<p>在运行v8时附加<code>--allow-natives-syntax</code>参数，可以通过该选项调用一些有助于调试到本地运行时函数。</p>
+<ul>
+<li>%DebugPrint(obj) 输出对象地址</li>
+<li>%SystemBreak()插入调试中断，重新调试时还会断在此处。</li>
+<li>Print在遇到CodeStubAssembler的代码时，可以用于输出变量值。</li>
+</ul>
+</li>
+<li><p><strong><em>readline()</em></strong>添加在js代码中，让程序停下等待输入，方便gdb调试。</p>
+</li>
+<li><p><a href="https://github.com/inexorabletash/polyfill" target="_blank" rel="noopener"><strong><em>Polyfill</em></strong></a> 包含很多js本身实现的js函数，实现逻辑和v8很类似，但是比C++阅读难度低很多。</p>
+</li>
+</ul>
+<h2 id="v8-DEBUG"><a href="#v8-DEBUG" class="headerlink" title="v8 DEBUG"></a>v8 DEBUG</h2><h3 id="V8-Object入门"><a href="#V8-Object入门" class="headerlink" title="V8 Object入门"></a>V8 Object入门</h3><p>这部分流程基本按照<strong>THORN</strong>大神的文章思路走下来，增加了从内存角度看的内容，很大一部分大神写的太好了就直接<em>引用</em>了，在这里做<em>声明</em>。</p>
+<p><a href="https://juejin.im/post/5cc7dc5af265da038d0b514d" target="_blank" rel="noopener">V8是怎么跑起来的</a> </p>
+<p><strong>在Chrome中查看快照</strong></p>
+<ul>
+<li><p>在console中运行一段js代码</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Fool</span>(<span class="params"></span>)</span>&#123;&#125;</span><br><span class="line"><span class="keyword">var</span> a=<span class="keyword">new</span> Fool(); <span class="comment">//构造函数主要是为了更方便地在快照中找到对象</span></span><br><span class="line">a.name=<span class="string">'aaa'</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>在Memory中，设置Profiles为Heap snapshot（堆快照），点击左边的小圆点。</p>
+<p>![屏幕快照2020-02-15下午3.40.44](<a href="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/屏幕快照" target="_blank" rel="noopener">https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/屏幕快照</a> 2020-02-15 下午3.40.44.png)</p>
+</li>
+</ul>
+<p><strong>v8对象结构</strong></p>
+<ul>
+<li><p>v8的对象主要由三个指针构成</p>
+<ul>
+<li>Hidden Class(隐藏类)</li>
+<li>Property</li>
+<li>Element    </li>
+</ul>
+<p>隐藏类用于描述对象的结构，Property和Element用于存放对象的属性，两者的区别主要体现在键名能否被索引。仔细的读者应该发现，在对象中还包含着名为<code>__proto__</code>的属性，这是JS对象中的<a href="https://zhuanlan.zhihu.com/p/23090041?refer=study-fe" target="_blank" rel="noopener">原型链</a>，与JS中<a href="https://zhuanlan.zhihu.com/p/23987456" target="_blank" rel="noopener">NEW的用途</a>有关。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/8B7ERf.png" alt="8B7ERf"></p>
+</li>
+</ul>
+<p><strong>Property和Elememt</strong></p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 可索引属性会被存储到 Elements 指针指向的区域</span></span><br><span class="line">&#123; <span class="number">1</span>: <span class="string">"a"</span>, <span class="number">2</span>: <span class="string">"b"</span> &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 命名属性会被存储到 Properties 指针指向的区域</span></span><br><span class="line">&#123; <span class="string">"first"</span>: <span class="number">1</span>, <span class="string">"second"</span>: <span class="number">2</span> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>参照ECMA规范中的要求，可索引属性需要按照索引值大小升序排列，而命令属性根据创建的顺序升序排列。</p>
+<p>让我们运行以下代码。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> a = &#123; <span class="number">1</span>: <span class="string">"a"</span>, <span class="number">2</span>: <span class="string">"b"</span>, <span class="string">"first"</span>: <span class="number">1</span>, <span class="number">3</span>: <span class="string">"c"</span>, <span class="string">"second"</span>: <span class="number">2</span> &#125;</span><br><span class="line"><span class="keyword">var</span> b = &#123; <span class="string">"second"</span>: <span class="number">2</span>, <span class="number">1</span>: <span class="string">"a"</span>, <span class="number">3</span>: <span class="string">"c"</span>, <span class="number">2</span>: <span class="string">"b"</span>, <span class="string">"first"</span>: <span class="number">1</span> &#125;</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/j5oJ6n.png" alt="j5oJ6n"></p>
+<p>对象a以<strong>可索引属性</strong>开头，存储时按照可索引对象升序排列，命名属性first比second要早创建，所以first排列在secnod前。对象b以<strong>命名属性</strong>开头，存储时与可索引部分与a相同，命名属性按照创建先后排列，second在first之前。而可索引属性和命名属性都很明显是分开的，也验证了两者时<strong>分开存储</strong>的理论。</p>
+<p><em>结论</em></p>
+<ul>
+<li>索引的属性按照升序排列，命名属性根据创建的顺序升序排列</li>
+<li>同时使用两种属性时，两个属性分开存储</li>
+</ul>
+<p>让我们来实际论证一下这个理论，通过之前的Heap快照来查看内存中的对象。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Foo1</span> (<span class="params"></span>) </span>&#123;&#125;</span><br><span class="line"><span class="keyword">var</span> a = <span class="keyword">new</span> Foo1()</span><br><span class="line"><span class="keyword">var</span> b = <span class="keyword">new</span> Foo1()</span><br><span class="line"></span><br><span class="line">a.name = <span class="string">'aaa'</span></span><br><span class="line">a.text = <span class="string">'aaa'</span></span><br><span class="line">b.name = <span class="string">'bbb'</span></span><br><span class="line">b.text = <span class="string">'bbb'</span></span><br><span class="line"></span><br><span class="line">a[<span class="number">1</span>] = <span class="string">'aaa'</span></span><br><span class="line">a[<span class="number">2</span>] = <span class="string">'aaa'</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//v8调试用</span></span><br><span class="line"><span class="comment">//%DebugPrint(a)</span></span><br><span class="line"><span class="comment">//%DebugPrint(b)</span></span><br><span class="line"><span class="comment">//%SystemBreak()</span></span><br></pre></td></tr></table></figure>
+
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/GTtP0c.png" alt="GTtP0c"></p>
+<p>a和b都包含命名属性name和text，a还拥有两个可索引属性。</p>
+<p>a和b两个对象指向的<a href="https://blog.csdn.net/qq_30638831/article/details/90552912" target="_blank" rel="noopener">隐藏类</a>是同一个(图中的Map @111025)，即说明a和b的对象具有相同的结构。</p>
+<p><em>思考一下，为什么a和b的属性并不相同，但是两者却拥有相同的结构？</em>THORN大神的文章中解释，可索引属性本身就是有序排列，并不需要通过结构去查找，所以也就不会和隐藏类有什么关系了。两者拥有相同隐藏类的原因还是取决于包含相同的命名属性name和text。</p>
+<p>大神还给出另外一个案例</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">a[<span class="number">1111</span>]=<span class="string">'aaa'</span></span><br></pre></td></tr></table></figure>
+
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/r3FqGA.png" alt="r3FqGA"></p>
+<p>在a对象增加了一个可索引属性[1111]。a对象和b对象，两者的隐藏类发生了变化。可索引数组Elememet中的数组也忽然没有了规律。因为写入了a[1111]之后，数组变成了稀疏数组，而为了节省空间，稀疏数组会转换为哈希存储的方式，而不是用一个完整的数组来描述这块空间。有趣的事，上文隐藏类似乎与可索引属性并没有什么关系，但是在这里，Elements从数组变成了稀疏数组，Property并没有变化，但是隐藏类却发生了变化。</p>
+<p>大神的分析(咱也不懂，咱也不敢问)</p>
+<blockquote>
+<p>可能是为了描述 <code>Element</code> 的结构发生改变</p>
+</blockquote>
+<p><em>让我们从调试角度再来回顾一下上文的内容</em></p>
+<p>通过<em>%DebugPrint(a)</em>来查看对象a在内存中的分布，也可以通过<em>job 0x2c671120f451</em>来查看这个结构。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">d8&gt; %DebugPrint(a)</span><br><span class="line">DebugPrint: <span class="number">0x2c671120f451</span>: [JS_OBJECT_TYPE]</span><br><span class="line"> - <span class="built_in">map</span>: <span class="number">0x3ef5ef90ce91</span> &lt;Map(HOLEY_ELEMENTS)&gt; [FastProperties]</span><br><span class="line"> - prototype: <span class="number">0x2c671120f349</span> &lt;Object <span class="built_in">map</span> = <span class="number">0x3ef5ef90cee9</span>&gt;</span><br><span class="line"> - elements: <span class="number">0x2c671120fae9</span> &lt;FixedArray[<span class="number">19</span>]&gt; [HOLEY_ELEMENTS]</span><br><span class="line"> - properties: <span class="number">0x2296bb502251</span> &lt;FixedArray[<span class="number">0</span>]&gt; &#123;</span><br><span class="line">    #name: <span class="number">0x200db42b661</span> &lt;<span class="keyword">String</span>[<span class="number">3</span>]: aaa&gt; (data field <span class="number">0</span>)</span><br><span class="line">    #<span class="built_in">text</span>: <span class="number">0x200db42b661</span> &lt;<span class="keyword">String</span>[<span class="number">3</span>]: aaa&gt; (data field <span class="number">1</span>)</span><br><span class="line"> &#125;</span><br><span class="line"> - elements: <span class="number">0x2c671120fae9</span> &lt;FixedArray[<span class="number">19</span>]&gt; &#123;</span><br><span class="line">           <span class="number">0</span>: <span class="number">0x2296bb502321</span> &lt;the_hole&gt;</span><br><span class="line">           <span class="number">1</span>: <span class="number">0x200db42b661</span> &lt;<span class="keyword">String</span>[<span class="number">3</span>]: aaa&gt;</span><br><span class="line">        <span class="number">2</span><span class="number">-18</span>: <span class="number">0x2296bb502321</span> &lt;the_hole&gt;</span><br><span class="line"> &#125;</span><br><span class="line"><span class="number">0x3ef5ef90ce91</span>: [Map]</span><br><span class="line"> - type: JS_OBJECT_TYPE</span><br><span class="line"> - instance <span class="built_in">size</span>: <span class="number">104</span></span><br><span class="line"> - inobject properties: <span class="number">10</span></span><br><span class="line"> - elements kind: HOLEY_ELEMENTS</span><br><span class="line"> - unused property fields: <span class="number">8</span></span><br><span class="line"> - <span class="keyword">enum</span> length: invalid</span><br><span class="line"> - stable_map</span><br><span class="line"> - back pointer: <span class="number">0x3ef5ef90ce39</span> &lt;Map(HOLEY_ELEMENTS)&gt;</span><br><span class="line"> - prototype_validity cell: <span class="number">0x2296bb502629</span> &lt;Cell value= <span class="number">1</span>&gt;</span><br><span class="line"> - instance descriptors (own) #<span class="number">2</span>: <span class="number">0x2c671120f831</span> &lt;DescriptorArray[<span class="number">8</span>]&gt;</span><br><span class="line"> - layout descriptor: (nil)</span><br><span class="line"> - prototype: <span class="number">0x2c671120f349</span> &lt;Object <span class="built_in">map</span> = <span class="number">0x3ef5ef90cee9</span>&gt;</span><br><span class="line"> - constructor: <span class="number">0x200db427329</span> &lt;JSFunction Foo1 (sfi = <span class="number">0x200db427149</span>)&gt;</span><br><span class="line"> - dependent code: <span class="number">0x2296bb502251</span> &lt;FixedArray[<span class="number">0</span>]&gt;</span><br><span class="line"> - construction counter: <span class="number">5</span></span><br><span class="line"></span><br><span class="line">&#123;<span class="number">1</span>: <span class="string">"aaa"</span>, name: <span class="string">"aaa"</span>, <span class="built_in">text</span>: <span class="string">"aaa"</span>&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">d8&gt; %DebugPrint(b)</span><br><span class="line">DebugPrint: <span class="number">0x2c671120f531</span>: [JS_OBJECT_TYPE]</span><br><span class="line"> - <span class="built_in">map</span>: <span class="number">0x3ef5ef90ce91</span> &lt;Map(HOLEY_ELEMENTS)&gt; [FastProperties]</span><br><span class="line"> - prototype: <span class="number">0x2c671120f349</span> &lt;Object <span class="built_in">map</span> = <span class="number">0x3ef5ef90cee9</span>&gt;</span><br><span class="line"> - elements: <span class="number">0x2296bb502251</span> &lt;FixedArray[<span class="number">0</span>]&gt; [HOLEY_ELEMENTS]</span><br><span class="line"> - properties: <span class="number">0x2296bb502251</span> &lt;FixedArray[<span class="number">0</span>]&gt; &#123;</span><br><span class="line">    #name: <span class="number">0x200db42bd11</span> &lt;<span class="keyword">String</span>[<span class="number">3</span>]: bbb&gt; (data field <span class="number">0</span>)</span><br><span class="line">    #<span class="built_in">text</span>: <span class="number">0x200db42bd11</span> &lt;<span class="keyword">String</span>[<span class="number">3</span>]: bbb&gt; (data field <span class="number">1</span>)</span><br><span class="line"> &#125;</span><br><span class="line"><span class="number">0x3ef5ef90ce91</span>: [Map]</span><br><span class="line"> - type: JS_OBJECT_TYPE</span><br><span class="line"> - instance <span class="built_in">size</span>: <span class="number">104</span></span><br><span class="line"> - inobject properties: <span class="number">10</span></span><br><span class="line"> - elements kind: HOLEY_ELEMENTS</span><br><span class="line"> - unused property fields: <span class="number">8</span></span><br><span class="line"> - <span class="keyword">enum</span> length: invalid</span><br><span class="line"> - stable_map</span><br><span class="line"> - back pointer: <span class="number">0x3ef5ef90ce39</span> &lt;Map(HOLEY_ELEMENTS)&gt;</span><br><span class="line"> - prototype_validity cell: <span class="number">0x2296bb502629</span> &lt;Cell value= <span class="number">1</span>&gt;</span><br><span class="line"> - instance descriptors (own) #<span class="number">2</span>: <span class="number">0x2c671120f831</span> &lt;DescriptorArray[<span class="number">8</span>]&gt;</span><br><span class="line"> - layout descriptor: (nil)</span><br><span class="line"> - prototype: <span class="number">0x2c671120f349</span> &lt;Object <span class="built_in">map</span> = <span class="number">0x3ef5ef90cee9</span>&gt;</span><br><span class="line"> - constructor: <span class="number">0x200db427329</span> &lt;JSFunction Foo1 (sfi = <span class="number">0x200db427149</span>)&gt;</span><br><span class="line"> - dependent code: <span class="number">0x2296bb502251</span> &lt;FixedArray[<span class="number">0</span>]&gt;</span><br><span class="line"> - construction counter: <span class="number">5</span></span><br><span class="line"></span><br><span class="line">&#123;name: <span class="string">"bbb"</span>, <span class="built_in">text</span>: <span class="string">"bbb"</span>&#125;</span><br></pre></td></tr></table></figure>
+
+<p>通过telescope命令(可见显示指针关系)，比较接近在Chrome中的观感。需要注意的是<strong><em>v8为了区别对象和值类型的区别，在对象的最低位设置为1，所以使用命令时需要-1才能获得正确的值。</em></strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">pwndbg&gt; telescope <span class="number">0x2c671120f451</span><span class="number">-1</span></span><br><span class="line"><span class="number">00</span>:<span class="number">0000</span>│   <span class="number">0x2c671120f450</span> —▸ <span class="number">0x3ef5ef90ce91</span> ◂— <span class="number">0xd00002c8ca6a022</span>			<span class="comment">//map: 0x3ef5ef90ce91</span></span><br><span class="line"><span class="number">01</span>:<span class="number">0008</span>│   <span class="number">0x2c671120f458</span> —▸ <span class="number">0x2296bb502251</span> ◂— <span class="number">0x2c8ca6a023</span>						<span class="comment">//properties: 0x2296bb502251 &lt;FixedArray[0]&gt;</span></span><br><span class="line"><span class="number">02</span>:<span class="number">0010</span>│   <span class="number">0x2c671120f460</span> —▸ <span class="number">0x2c671120fae9</span> ◂— <span class="number">0x2c8ca6a023</span>						<span class="comment">//elements: 0x2c671120fae9 &lt;FixedArray[19]&gt;</span></span><br><span class="line"><span class="number">03</span>:<span class="number">0018</span>│   <span class="number">0x2c671120f468</span> —▸ <span class="number">0x200db42b661</span> ◂— <span class="number">0xbe00002c8ca6a024</span>			<span class="comment">//properties[name/text](共用): 0x200db42b661</span></span><br><span class="line">... ↓</span><br><span class="line"><span class="number">05</span>:<span class="number">0028</span>│   <span class="number">0x2c671120f478</span> —▸ <span class="number">0x2c8ca6a023b9</span> ◂— <span class="number">0x100002c8ca6a022</span>			<span class="comment">//slot</span></span><br><span class="line">... ↓</span><br><span class="line">pwndbg&gt; telescope <span class="number">0x2c671120f531</span><span class="number">-1</span></span><br><span class="line"><span class="number">00</span>:<span class="number">0000</span>│   <span class="number">0x2c671120f530</span> —▸ <span class="number">0x3ef5ef90ce91</span> ◂— <span class="number">0xd00002c8ca6a022</span>			<span class="comment">//map: 0x3ef5ef90ce91</span></span><br><span class="line"><span class="number">01</span>:<span class="number">0008</span>│   <span class="number">0x2c671120f538</span> —▸ <span class="number">0x2296bb502251</span> ◂— <span class="number">0x2c8ca6a023</span>						<span class="comment">//properties</span></span><br><span class="line">... ↓</span><br><span class="line"><span class="number">03</span>:<span class="number">0018</span>│   <span class="number">0x2c671120f548</span> —▸ <span class="number">0x200db42bd11</span> ◂— <span class="number">0xc600002c8ca6a024</span>			<span class="comment">//elements</span></span><br><span class="line">... ↓</span><br><span class="line"><span class="number">05</span>:<span class="number">0028</span>│   <span class="number">0x2c671120f558</span> —▸ <span class="number">0x2c8ca6a023b9</span> ◂— <span class="number">0x100002c8ca6a022</span>			<span class="comment">//properties[name]</span></span><br></pre></td></tr></table></figure>
+
+<p>验证前文property和element属性的分开存放的假设，初始时两者的值是相同的。<em>properties</em>数组中存放的值如果相同（例如都是’aaa’），也会引用同一块内存用来节省空间，类似隐藏类的实现。</p>
+<p><strong>命名属性（property）的不同存储方式</strong></p>
+<p>V8 中命名属性有三种的不同存储方式：对象内属性（in-object）、快属性（fast）和慢属性（slow）</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/nd7e92.png" alt="nd7e92"></p>
+<ul>
+<li>对象内属性，保存在对象本身，访问速度最快</li>
+<li>快属性，比前者多一次寻址次数</li>
+<li>慢属性速度最慢，将属性的完整结构存储在内（前两种属性的结构会将结构放在隐藏类中描述）</li>
+</ul>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//三种不同类型的 Property 存储模式</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Foo2</span>(<span class="params"></span>) </span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> a = <span class="keyword">new</span> Foo2()</span><br><span class="line"><span class="keyword">var</span> b = <span class="keyword">new</span> Foo2()</span><br><span class="line"><span class="keyword">var</span> c = <span class="keyword">new</span> Foo2()</span><br><span class="line"><span class="keyword">for</span> (<span class="keyword">var</span> i = <span class="number">0</span>; i &lt; <span class="number">10</span>; i ++) &#123;</span><br><span class="line">  a[<span class="keyword">new</span> <span class="built_in">Array</span>(i+<span class="number">2</span>).join(<span class="string">'a'</span>)] = <span class="string">'aaa'</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">for</span> (<span class="keyword">var</span> i = <span class="number">0</span>; i &lt; <span class="number">12</span>; i ++) &#123;</span><br><span class="line">  b[<span class="keyword">new</span> <span class="built_in">Array</span>(i+<span class="number">2</span>).join(<span class="string">'b'</span>)] = <span class="string">'bbb'</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">for</span> (<span class="keyword">var</span> i = <span class="number">0</span>; i &lt; <span class="number">30</span>; i ++) &#123;</span><br><span class="line">  c[<span class="keyword">new</span> <span class="built_in">Array</span>(i+<span class="number">2</span>).join(<span class="string">'c'</span>)] = <span class="string">'ccc'</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>对象内属性和快属性的结构基本相同，对象内属性因为对象存储空间的限制，所以在超过10个属性之后多余的部分就会进入property（命名属性）中。</p>
+<p><em>对象内属性</em></p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/u5vm0G.png" alt="u5vm0G"></p>
+<p><em>快属性</em>：多出的两个属性被存入property中，并且有序索引。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/mzVIMk.png" alt="mzVIMk"></p>
+<p><em>慢属性</em>：property中的索引变得无序，说明这个对象已经采用了hash存取结构了。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/Kk2crN.png" alt="Kk2crN"></p>
+<p>至于为什么要采用三种方式进行存储，无非是为了让v8更快一些。这里就不做记录了，有兴趣可以看参考文献。</p>
+<p><strong>隐藏类</strong></p>
+<p><strong><em>Hidden Class</em></strong>，即隐藏类，V8借用了类和偏移位置的思想，将本来通过属性名匹配来访问属性值的方法进行了改进，使用类似C++编译器的偏移位置机制来实现。在V8的Memory检查器中，隐藏类被称为<strong><em>Map</em></strong>。在SpiderMonkey中，类似的设计被称为<a href="https://zhuanlan.zhihu.com/p/38202123" target="_blank" rel="noopener">Shape</a>。</p>
+<p>隐藏类的目的只有两个，运行更快和占内存空间更小。我们这里从节省内存空间讨论。</p>
+<p>在 ECMAScript 中，<a href="https://tc39.github.io/ecma262/#sec-property-attributes" target="_blank" rel="noopener">对象属性的 Attribute</a>被描述为以下结构。</p>
+<ul>
+<li><code>[[Value]]</code>：属性的值</li>
+<li><code>[[Writable]]</code>：定义属性是否可写（即是否能被重新分配）</li>
+<li><code>[[Enumerable]]</code>：定义属性是否可枚举</li>
+<li><code>[[Configurable]]</code>：定义属性是否可配置（删除）</li>
+</ul>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/QajU2V.png" alt="QajU2V"></p>
+<p>隐藏类的引入，将属性的 <code>Value</code> 与其它 <code>Attribute</code> 分开。一般情况下，对象的 Value 是经常会发生变动的，而 <code>Attribute</code> 是几乎不怎么会变的。没有没有必要重复Attribute的剩余部分。</p>
+<p><strong>隐藏类的创建</strong></p>
+<p>对象创建过程中，每添加一个命名属性，都会对应一个生成一个新的隐藏类。在 V8 的底层实现了一个将隐藏类连接起来的转换树，如果以相同的顺序添加相同的属性，转换树会保证最后得到相同的隐藏类。</p>
+<p>下面的例子中，a 在空对象时、添加 <code>name</code>属性后、添加 <code>text</code>属性后会分别对应不同的隐藏类。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Foo3</span> (<span class="params"></span>)</span>&#123;&#125;;</span><br><span class="line"><span class="keyword">let</span> a = <span class="keyword">new</span> Foo3();</span><br><span class="line">a.name = <span class="string">'migraine1'</span></span><br><span class="line">a.text = <span class="string">'migraine2'</span></span><br></pre></td></tr></table></figure>
+
+<p><em>隐藏类生成概念图</em></p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/5WU8yj.png" alt="5WU8yj"></p>
+<p>查看堆内存快照，在创建name时，Hidden Class1创建了一个Attribute，当Hidden Class2创建的时候，name部分的属性会直接饮用Hidden Class1的Attribute。快照中可以看到back_pointer指向前一个Hidden Class。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/mkZCAu.png" alt="mkZCAu"></p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/Aqwc3r.png" alt="Aqwc3r"></p>
+<p><strong>隐藏类的结构</strong></p>
+<p>让我们从上文DebugPrint(a)的数据来看</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Foo1</span> (<span class="params"></span>) </span>&#123;&#125;</span><br><span class="line"><span class="keyword">var</span> a = <span class="keyword">new</span> Foo1()</span><br><span class="line"><span class="keyword">var</span> b = <span class="keyword">new</span> Foo1()</span><br><span class="line"></span><br><span class="line">a.name = <span class="string">'aaa'</span></span><br><span class="line">a.text = <span class="string">'aaa'</span></span><br><span class="line">b.name = <span class="string">'bbb'</span></span><br><span class="line">b.text = <span class="string">'bbb'</span></span><br><span class="line"></span><br><span class="line">a[<span class="number">1</span>] = <span class="string">'aaa'</span></span><br><span class="line">a[<span class="number">2</span>] = <span class="string">'aaa'</span></span><br></pre></td></tr></table></figure>
+
+<p><em>a对象中的map</em>，各个部分的意义在注释中</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">0x3ef5ef90ce91</span>: [Map]</span><br><span class="line"> - type: JS_OBJECT_TYPE				<span class="comment">//实例类型</span></span><br><span class="line"> - instance <span class="built_in">size</span>: <span class="number">104</span>					<span class="comment">//实例大小</span></span><br><span class="line"> - inobject properties: <span class="number">10</span>		<span class="comment">//对象内属性存储空间</span></span><br><span class="line"> - elements kind: HOLEY_ELEMENTS</span><br><span class="line"> - unused property fields: <span class="number">8</span>  <span class="comment">//未使用slot数</span></span><br><span class="line"> - <span class="keyword">enum</span> length: invalid</span><br><span class="line"> - stable_map									<span class="comment">//处于快属性模式 （dictionary_map：慢属性/字典模式）</span></span><br><span class="line"> - back pointer: <span class="number">0x3ef5ef90ce39</span> &lt;Map(HOLEY_ELEMENTS)&gt;</span><br><span class="line"> - prototype_validity cell: <span class="number">0x2296bb502629</span> &lt;Cell value= <span class="number">1</span>&gt;</span><br><span class="line"> - instance descriptors (own) #<span class="number">2</span>: <span class="number">0x2c671120f831</span> &lt;DescriptorArray[<span class="number">8</span>]&gt;<span class="comment">//标识对象实例的属性名与其值的存取位置（a和b的描述符相同，结构也相同）</span></span><br><span class="line"> - layout descriptor: (nil)</span><br><span class="line"> - prototype: <span class="number">0x2c671120f349</span> &lt;Object <span class="built_in">map</span> = <span class="number">0x3ef5ef90cee9</span>&gt;</span><br><span class="line"> - constructor: <span class="number">0x200db427329</span> &lt;JSFunction Foo1 (sfi = <span class="number">0x200db427149</span>)&gt;</span><br><span class="line"> - dependent code: <span class="number">0x2296bb502251</span> &lt;FixedArray[<span class="number">0</span>]&gt;</span><br><span class="line"> - construction counter: <span class="number">5</span></span><br></pre></td></tr></table></figure>
+
+<p>job查看其中的对象实例</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">   pwndbg&gt; job <span class="number">0x2c671120f831</span></span><br><span class="line">Descriptor <span class="built_in">array</span> #<span class="number">2</span>:</span><br><span class="line">  [<span class="number">0</span>]: <span class="meta">#name (data field 0:h, p: 0, attrs: [WEC]) @ Any</span></span><br><span class="line">  [<span class="number">1</span>]: <span class="meta">#text (data field 1:h, p: 1, attrs: [WEC]) @ Any</span></span><br></pre></td></tr></table></figure>
+
+<p><em>通过内存实验,验证一下MAP创建的过程。</em></p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Foo3</span> (<span class="params"></span>)</span>&#123;&#125;;</span><br><span class="line"><span class="keyword">let</span> a = <span class="keyword">new</span> Foo3();</span><br><span class="line">a.name = <span class="string">'migraine1'</span></span><br><span class="line">a.text = <span class="string">'migraine2'</span></span><br></pre></td></tr></table></figure>
+
+<p>创建a.name之后，a.text之前的MAP</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">0x296dce70cf41</span>: [Map]</span><br><span class="line"> - type: JS_OBJECT_TYPE</span><br><span class="line"> - instance <span class="built_in">size</span>: <span class="number">104</span></span><br><span class="line"> - inobject properties: <span class="number">10</span></span><br><span class="line"> - elements kind: HOLEY_ELEMENTS</span><br><span class="line"> - unused property fields: <span class="number">9</span></span><br><span class="line"> - <span class="keyword">enum</span> length: invalid</span><br><span class="line"> - stable_map</span><br><span class="line"> - back pointer: <span class="number">0x296dce70ccd9</span> &lt;Map(HOLEY_ELEMENTS)&gt;</span><br><span class="line"> - prototype_validity cell: <span class="number">0xc850a002629</span> &lt;Cell value= <span class="number">1</span>&gt;</span><br><span class="line"> - instance descriptors (own) #<span class="number">1</span>: <span class="number">0x39ca33d90331</span> &lt;DescriptorArray[<span class="number">5</span>]&gt;</span><br><span class="line"> - layout descriptor: (nil)</span><br><span class="line"> - prototype: <span class="number">0x39ca33d8f379</span> &lt;Object <span class="built_in">map</span> = <span class="number">0x296dce70cde1</span>&gt;</span><br><span class="line"> - constructor: <span class="number">0x3e90a04a7329</span> &lt;JSFunction Foo3 (sfi = <span class="number">0x3e90a04a7149</span>)&gt;</span><br><span class="line"> - dependent code: <span class="number">0xc850a002251</span> &lt;FixedArray[<span class="number">0</span>]&gt;</span><br><span class="line"> - construction counter: <span class="number">6</span></span><br><span class="line"></span><br><span class="line">&#123;name: <span class="string">"migriane1"</span>&#125;</span><br><span class="line">-----</span><br><span class="line">pwndbg&gt; job <span class="number">0x39ca33d90331</span>        <span class="comment">//对象实例name</span></span><br><span class="line">Descriptor <span class="built_in">array</span> #<span class="number">1</span>:</span><br><span class="line">  [<span class="number">0</span>]: #name (data field <span class="number">0</span>:h, p: <span class="number">0</span>, attrs: [WEC]) @ Any</span><br></pre></td></tr></table></figure>
+
+<p>创建a.text之后的MAP</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">0x296dce70cff1</span>: [Map]</span><br><span class="line"> - type: JS_OBJECT_TYPE</span><br><span class="line"> - instance <span class="built_in">size</span>: <span class="number">104</span></span><br><span class="line"> - inobject properties: <span class="number">10</span></span><br><span class="line"> - elements kind: HOLEY_ELEMENTS</span><br><span class="line"> - unused property fields: <span class="number">8</span>																<span class="comment">//a.text 占用了对象内属性空间</span></span><br><span class="line"> - <span class="keyword">enum</span> length: invalid</span><br><span class="line"> - stable_map</span><br><span class="line"> - back pointer: <span class="number">0x296dce70cf41</span> &lt;Map(HOLEY_ELEMENTS)&gt;       <span class="comment">//之前之前的MAP地址</span></span><br><span class="line"> - prototype_validity cell: <span class="number">0xc850a002629</span> &lt;Cell value= <span class="number">1</span>&gt;</span><br><span class="line"> - instance descriptors (own) #<span class="number">2</span>: <span class="number">0x39ca33d90891</span> &lt;DescriptorArray[<span class="number">8</span>]&gt;</span><br><span class="line"> - layout descriptor: (nil)</span><br><span class="line"> - prototype: <span class="number">0x39ca33d8f379</span> &lt;Object <span class="built_in">map</span> = <span class="number">0x296dce70cf99</span>&gt;</span><br><span class="line"> - constructor: <span class="number">0x3e90a04a7329</span> &lt;JSFunction Foo3 (sfi = <span class="number">0x3e90a04a7149</span>)&gt;</span><br><span class="line"> - dependent code: <span class="number">0xc850a002251</span> &lt;FixedArray[<span class="number">0</span>]&gt;</span><br><span class="line"> - construction counter: <span class="number">6</span></span><br><span class="line"></span><br><span class="line">&#123;name: <span class="string">"migriane1"</span>, <span class="built_in">text</span>: <span class="string">"migraine2"</span>&#125;</span><br><span class="line">---</span><br><span class="line">pwndbg&gt; job <span class="number">0x39ca33d90891</span></span><br><span class="line">Descriptor <span class="built_in">array</span> #<span class="number">2</span>:</span><br><span class="line">  [<span class="number">0</span>]: #name (data field <span class="number">0</span>:h, p: <span class="number">1</span>, attrs: [WEC]) @ Any</span><br><span class="line">  [<span class="number">1</span>]: #<span class="built_in">text</span> (data field <span class="number">1</span>:h, p: <span class="number">0</span>, attrs: [WEC]) @ Any</span><br></pre></td></tr></table></figure>
+
+<h3 id="V8内存模型"><a href="#V8内存模型" class="headerlink" title="V8内存模型"></a>V8内存模型</h3><p><a href="http://eternalsakura13.com/2018/05/06/v8/" target="_blank" rel="noopener">v8 exploit</a> </p>
+<p>V8的Object内存继承关系如下，继承比较复杂看源代码的时候需要注意从基类继承下来的变量。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">Object</span><br><span class="line">	Smi</span><br><span class="line">	HeapObject</span><br><span class="line">		HeapNumber</span><br><span class="line">		PropertyCell</span><br><span class="line">		Name</span><br><span class="line">				String</span><br><span class="line">		Oddball</span><br><span class="line">		JSReceiver</span><br><span class="line">			JSObject</span><br><span class="line">				JSFunction</span><br><span class="line">				JSArray</span><br><span class="line">				JSArrayBuffer</span><br></pre></td></tr></table></figure>
+
+<p><strong>Object</strong></p>
+<p>Object主要包含两种类型</p>
+<ul>
+<li>Smi(Samll Integer) &lt;–整数<ul>
+<li>整数由带符号的31位范围表示</li>
+<li>整数由带符号的32位范围表示<ul>
+<li>最后一bit(LSB)始终为0</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>HeapObject. &lt;–V8大部分存储类型的基类<ul>
+<li>除了整数以外的其他类（包括范围在Smi表达以外的整数，例如Double）<ul>
+<li>始终有个指向Map的指针。</li>
+<li>最后一bit位始终是1，在解引用的时候要做-1操作</li>
+</ul>
+</li>
+<li>HeapObject基本上由GC管理，因此位于GC区域，而不是HEAP的区域（堆喷射中一连串均匀的非HEAP内存，那个一般就是JS的GC堆）</li>
+</ul>
+</li>
+</ul>
+<p><strong>Tagged Values</strong></p>
+<p>同时表示指向Smi和HeapObject的指针的机制（gdb中通过job查看内存会自动进行区分）</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/0zUFQE.png" alt="0zUFQE"></p>
+<ul>
+<li>指向SMI时（LSB=0）<ul>
+<li>32bit ：通过右移一位获得原始值</li>
+<li>64bit：通过右移32位获得原始值（64bit原始值在高32位）</li>
+</ul>
+</li>
+</ul>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/5wvZ0a.png" alt="5wvZ0a"></p>
+<ul>
+<li><p>指向HeapObject时</p>
+<ul>
+<li>32bit：Ptr-1直接指向HeapObject</li>
+<li>64bit:  Ptr-1 直接指向HeapObject</li>
+</ul>
+<p>因为GC上的CHUNK都是4/8字节对齐的，所以<em>指针</em>在不人为改动的情况下HeapObject最低位LSB始终是0，所以Pointer不需要和Smi一样左移来空出多余的一位。</p>
+</li>
+</ul>
+<p><strong>HeapNumber</strong></p>
+<p>当对象的值位Double，数据无法在Smi范围内表达，就需要借用HeapObject来存储数据。</p>
+<p>V8中的HeapObject内部没有定义成员变量，这些内部指针是通过偏移量实现的。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/w2Cl0B.png" alt="w2Cl0B"></p>
+<p>也同样做一遍实验，存储Smi(0xdeadbee)和Double(0xdeadbeef),后者要大于0x7fffffff，所以需要放在数组中。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/oG6cDV.png" alt="oG6cDV"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">pwndbg&gt; job 0x10bf2190d441</span><br><span class="line">0x10bf2190d441: [FixedArray]</span><br><span class="line"> - map: 0x2f1f4b9826d1 &lt;Map&gt;</span><br><span class="line"> - length: 3</span><br><span class="line">           0: 233495534</span><br><span class="line">           1: 0x236edc27151 &lt;Number 3.73593e+09&gt;</span><br><span class="line">           2: 0x236edc27021 &lt;String[6]: 123123&gt;</span><br></pre></td></tr></table></figure>
+
+<p>写入内存之后，通过job可以看到这个数组内容，不过这次我们需要直接用x/看</p>
+<p><em>Smi类型是直接存在FixedArray中高32位置</em></p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/zRoK95.png" alt="zRoK95"></p>
+<p><em>非Smi类型，存放在指针中，解引用的时候需要-1</em></p>
+<p>0x41ebd5bdde0000是0xdeadbeef的double存储方式</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/noMmcP.png" alt="noMmcP"></p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/flphXO.png" alt="flphXO"></p>
+<p>HeapNumber对象和其他对象连续，中间没有任何间隙（自己做的图好丑）</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/4iMv3n.png" alt="4iMv3n"></p>
+<p><em>这部分还有一些坑，之后再填，先学下面的部分</em></p>
+<p><strong>JSObject</strong></p>
+<p>这部分在上文有过比较详细实验，简单总结一下。</p>
+<p>JSObject用于表示Javascript中的对象</p>
+<p>​    继承自<em>Object-&gt;HeapObject-&gt;JSReceiver</em></p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/vdqCSg.png" alt="vdqCSg"></p>
+<ul>
+<li>JSObject从JSReceiver继承Property（命名属性），用于存放命名属性</li>
+<li>JSObject定义了Elements（可索引属性），用于存放可索引属性</li>
+</ul>
+<p><strong>JSFunction</strong></p>
+<p>用于指向Javascript Function的对象</p>
+<p>​    继承自 <em>Object-&gt;HeapObject-&gt;JSRecviver-&gt;JSObject</em></p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/Lp1jtk.png" alt="Lp1jtk"></p>
+<p>实验一下</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/cY5Oz0.png" alt="cY5Oz0"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">pwndbg&gt; x&#x2F;20xg  0x6d0e21a7308  &lt;-- function f()</span><br><span class="line">0x6d0e21a7308:	0x00000dd381902519 &lt;--KMapOffset*	0x000030bd03f82251</span><br><span class="line">0x6d0e21a7318:	0x000030bd03f82251	0x000006d0e21a7129</span><br><span class="line">0x6d0e21a7328:	0x000006d0e2183eb1	0x000006d0e21a72e9</span><br><span class="line">0x6d0e21a7338:	0x000014a2d8e1fe41 &lt;--kCodeEntry	0x000030bd03f82321</span><br><span class="line">0x6d0e21a7348:	0x00001bdd17582a41</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p>kCodeEntryOffset是一个指向JIT code（可读可执行的区域），很多exploit都会在这个部分写入shellcode。当然前提是这个funciton变热才会使用JIT</p>
+<ul>
+<li><p>V8 <em>6.7版本</em>之后JIT的区域不再可写，可能需要结合JIT Spray才能利用。（这个知识点还不太懂，没试过）</p>
+</li>
+<li><p>向JIT的RWX内存实现利用可以看我写的<a href="https://migraine-sudo.github.io/2019/12/20/qwn2own/">JS Engine Exploit-qwn2own</a></p>
+</li>
+</ul>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/YxmYWC.png" alt="YxmYWC"></p>
+<p>​                            <strong><em>GC区域中 标注位Code的部分大概就是JIT的执行区域</em></strong></p>
+</li>
+</ul>
+<p><strong>JSArray</strong></p>
+<p> 继承自 Object-&gt;HeapObject-&gt;JSReceiver-&gt;JSObject</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/923PSg.png" alt="923PSg"></p>
+<p><strong>JSArrayBuffer</strong></p>
+<p><em>ArrayBuffer &amp; TypedArray</em></p>
+<p>​    ArrayBuffer是一个直接从Javascript访问内存的特殊数组</p>
+<ul>
+<li><p>ArrayBuffer仅仅准备了一个内存缓冲区</p>
+</li>
+<li><p>BackingStore，可以使用TypedArray指定的类型读取和写入该区域</p>
+<ul>
+<li><em>BackingStore指针，属于HEAP而不是GC管理区域</em></li>
+</ul>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/uNlKzE.png" alt="uNlKzE"></p>
+</li>
+</ul>
+<ul>
+<li><p>实际应用中，有必要和TypedArray和DataView一起使用</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/vBi7I1.png" alt="vBi7I1"></p>
+<p><em>一些Demo</em></p>
+<ul>
+<li><p>不使用TypeArray</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">d8&gt; var a=<span class="keyword">new</span> ArrayBuffer(<span class="number">8</span>);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">  d8&gt; %DebugPrint(a)</span><br><span class="line">DebugPrint: <span class="number">0x2be37c28d469</span>: [JSArrayBuffer]</span><br><span class="line">   - <span class="built_in">map</span>: <span class="number">0x2ed11a983fe9</span> &lt;Map(HOLEY_ELEMENTS)&gt; [FastProperties]</span><br><span class="line"> - prototype: <span class="number">0x34a749712981</span> &lt;Object <span class="built_in">map</span> = <span class="number">0x2ed11a984041</span>&gt;</span><br><span class="line">   - elements: <span class="number">0x9d3c4182251</span> &lt;FixedArray[<span class="number">0</span>]&gt; [HOLEY_ELEMENTS]</span><br><span class="line"> - embedder fields: <span class="number">2</span></span><br><span class="line">   - backing_store: <span class="number">0x55b2de6d7c40</span>   --&gt;指向HEAP区而不是GC区</span><br><span class="line">   - byte_length: <span class="number">8</span></span><br><span class="line">  ...</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>使用TypeArray</p>
+<p><em>制定长度，初始化为0</em></p>
+<p><code>t_arr=new Uint8Array(128)</code>//ArrayBuffer被创建在内部</p>
+<p><em>使用特定值初始化</em></p>
+<p><code>t_arr=new Uint8Array([1,2,3,4])</code>//ArrayBuffer被创建在内部</p>
+</li>
+</ul>
+<p><em>事先构建缓冲区并使用它</em></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">  arr_buf&#x3D;new ArrayBuffer(8);</span><br><span class="line">t_arr1&#x3D;new Uint16Array(arr_buf);&#x2F;&#x2F;创建一个Uint16数组</span><br><span class="line">  t_arr2&#x3D;new Uint16Array(arr_buf,0,4);&#x2F;&#x2F;或者，您也可以指定数组的开始和结束位置</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/8hWdrz.png" alt="8hWdrz"></p>
+<ul>
+<li><p>BackingStore指向存储ArrayBuffer数据的HEAP。</p>
+<ul>
+<li>所以在攻击中，覆盖BackingStore指针来实现一个oob是一个很好的思路</li>
+</ul>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">arr=<span class="keyword">new</span> <span class="built_in">ArrayBuffer</span>(<span class="number">0x20</span>);</span><br><span class="line">u32=<span class="keyword">new</span> <span class="built_in">Uint32Array</span>(arr);</span><br><span class="line">u32[<span class="number">0</span>]=<span class="number">0x1234</span>;</span><br><span class="line">u32[<span class="number">1</span>]=<span class="number">0x5678</span>;</span><br><span class="line">%DebugPrint(u32);</span><br></pre></td></tr></table></figure>
+
+
+</li>
+</ul>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/39RjhN.png" alt="39RjhN"></p>
+<ul>
+<li><p>ArrayBuffer也可以在不同的TypedArray之间共享</p>
+<ul>
+<li>准备ArrayBuffer</li>
+</ul>
+<p>​    <code>var ab = new ArrayBuffer(0x100);</code></p>
+<ul>
+<li>向ArrayBuffer写入Float64的值</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> t64 = <span class="keyword">new</span> <span class="built_in">Float64Array</span>(ab);</span><br><span class="line">t64[<span class="number">0</span>] = <span class="number">6.953328187651540e-310</span>;<span class="comment">//字节序列是0x00007fffdeadbeef</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>当某些地址在V8上泄露时，通常在大多数情况下被迫将其解释为双精度值，为了正确计算偏移量等，需要将其转换为整数值。 对于完成该转换，ArrayBuffer是最佳的。</strong></p>
+<ul>
+<li><p>从ArrayBuffer读取两个unit32</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> t32 = <span class="keyword">new</span> <span class="built_in">Uint32Array</span>(ab);</span><br><span class="line">k = [t32[<span class="number">1</span>],t32[<span class="number">0</span>]]</span><br></pre></td></tr></table></figure>
+
+<p><strong>k是6.953328187651540e-310,将字节序列按照4个字节去分开，然后解释为Uint32,于是得到:</strong><br><strong>k=[0x00007fff，0xdeadbeef]</strong></p>
+</li>
+</ul>
+<h2 id="代码阅读引导"><a href="#代码阅读引导" class="headerlink" title="代码阅读引导"></a>代码阅读引导</h2><p><em>摘自</em></p>
+<p><a href="http://eternalsakura13.com/2018/07/09/zujian/" target="_blank" rel="noopener">V8 javascript engine代码阅读</a> </p>
+<p><em>目录：</em></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line">src ---+</span><br><span class="line">       |</span><br><span class="line">       +---arm</span><br><span class="line">       +---arm64</span><br><span class="line">       +---mips</span><br><span class="line">       +---mips64</span><br><span class="line">A      +---ia32</span><br><span class="line">       +---x64</span><br><span class="line">       +---ppc</span><br><span class="line">       +---s390</span><br><span class="line">       +---wasm</span><br><span class="line">       +---asmjs</span><br><span class="line">       |</span><br><span class="line">       +---ast</span><br><span class="line">       +---compiler</span><br><span class="line">B      +---compiler-dispatcher</span><br><span class="line">       +---interpreter</span><br><span class="line">       +---parsing</span><br><span class="line">       |</span><br><span class="line">       +---js</span><br><span class="line">       +---builtins</span><br><span class="line">C      +---runtime</span><br><span class="line">       +---snapshot</span><br><span class="line">       +---regexp</span><br><span class="line">       +---profiler</span><br><span class="line">       |</span><br><span class="line">D      +---ic</span><br><span class="line">       |</span><br><span class="line">       +---heap</span><br><span class="line">E      +---heap-symbols.h</span><br><span class="line">       +---zone</span><br><span class="line">       +---objects</span><br><span class="line">       |</span><br><span class="line">F      +---inspector</span><br><span class="line">       |</span><br><span class="line">       +---base</span><br><span class="line">       +---debug</span><br><span class="line">       +---tracing</span><br><span class="line">       +---extensions</span><br><span class="line">G      +---libplatform</span><br><span class="line">       +---libsampler</span><br><span class="line">       +---third_party</span><br><span class="line">       +---trap-handler</span><br><span class="line">       |</span><br><span class="line">       +---*.cc&#x2F;*.h</span><br><span class="line">       .</span><br><span class="line">       .</span><br><span class="line">       .</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>A:存储汇编代码，反汇编程序，宏汇编程序，模拟器等，对于不同CPU不同。</li>
+<li>B:code generation系统，例如parse, compile, interpreter, etc.</li>
+<li>C:JS built-in function和runtime helper function</li>
+<li>D:Inline Cache code</li>
+<li>E:object model(对象模型)和memory(内存)相关代码</li>
+<li>F:Inspector</li>
+<li>G:Debugging and platform abstraction layer codes are stored.</li>
+</ul>
+<p><em>必读部分</em></p>
+<ul>
+<li>api.h/api.cc<br>An API for Embedder is defined.</li>
+<li>objects.h/objects.cc<br>定义了v8的所有对象模型</li>
+<li>compiler/compiler.cc<br>编译的入口点</li>
+<li>compiler/pipeline.cc<br>和compiler.cc关联，放置TurboFan</li>
+<li>runtime/runtime-*.cc<br>A runtime function is defined.</li>
+<li>builtins/builtin-*.cc<br>A faster runtime function group. It is described in CodeStubAssembler (commentary) or Assembler.</li>
+<li>interpreter/*.cc<br>Ignition解释器</li>
+<li>ic/*.cc<br>Inline Caching的实现<br>存储Runtime(?)</li>
+</ul>
+<h2 id="扩展阅读："><a href="#扩展阅读：" class="headerlink" title="扩展阅读："></a>扩展阅读：</h2><p><a href="https://www.cnblogs.com/Bideam/p/6730759.html" target="_blank" rel="noopener">从Chrome源码看JS Object的实现</a></p>
+<p><a href="https://juejin.im/post/5dc4d823f265da4d4c202d3b?from=groupmessage" target="_blank" rel="noopener">V8 是怎么跑起来的 —— V8 的 JavaScript 执行管道</a></p>
+<p><a href="https://blog.csdn.net/qq_30638831/article/details/90552912" target="_blank" rel="noopener">js中v8引擎的详解</a></p>
+<p><a href="https://segmentfault.com/a/1190000020420800" target="_blank" rel="noopener">探究JS V8引擎下的“数组”底层实现</a> &lt;–JSArray是个特殊的JSObject</p>
+<p><a href="https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Array/from" target="_blank" rel="noopener">Array.from()</a> &lt;–比起内容，更重要的是认识到Polyfill这个开源项目</p>
+<p> <a href="https://zhuanlan.zhihu.com/p/82854566" target="_blank" rel="noopener">V8 小整数（smi）和指针</a> </p>
+<p><a href="https://zhuanlan.zhihu.com/p/28780798" target="_blank" rel="noopener">奇技淫巧学 V8 之二，对象在 V8 内的表达</a></p>
+<p><a href="https://blog.csdn.net/weixin_34122548/article/details/90590704" target="_blank" rel="noopener">V8 Ignition：JS 引擎与字节码的不解之缘</a></p>
+<p><a href="https://zhuanlan.zhihu.com/p/24982678" target="_blank" rel="noopener">V8 Object 内存结构与属性访问详解</a></p>
+<p><a href="https://blog.5udou.cn/blog/nodejsShen-Ru-Xue-Xi-Xi-Lie-Zhi-v8Ji-Chu-Pian-2" target="_blank" rel="noopener">nodejs深入学习系列之v8基础篇</a> &lt;–v8编译的几种方式</p>
+<p><a href="https://www.chenquan.me/archives/280" target="_blank" rel="noopener">如何用GN编译V8引擎</a></p>
+<p><a href="https://zhuanlan.zhihu.com/p/23090041?refer=study-fe" target="_blank" rel="noopener">什么是JS原型链</a></p>
+<p><a href="https://benediktmeurer.de/2018/06/14/javascript-engine-fundamentals-shapes-and-inline-caches/" target="_blank" rel="noopener">JavaScript engine fundamentals: Shapes and Inline Caches</a></p>
+<p><a href="https://github.com/push0ebp/v8-starter-guide" target="_blank" rel="noopener">v8漏洞利用-韩语</a></p>
+<p><a href="https://segmentfault.com/a/1190000021779743" target="_blank" rel="noopener">V8引擎内存管理（译文）</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://migraine-sudo.github.io/2020/02/15/v8/" data-id="ck70c7b9t00004tse63cm75dt"
+         class="article-share-link">Share</a>
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Exploit/" rel="tag">-Exploit</a></li></ul>
+
+    </footer>
+
+  </div>
+
+  
+    
+  <nav class="article-nav">
+    
+      <a href="/2020/02/22/roll-a-v8/" class="article-nav-link">
+        <strong class="article-nav-caption">Newer posts</strong>
+        <div class="article-nav-title">
+          
+            PlaidCTF - roll a d8
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2020/01/27/how2heap4/" class="article-nav-link">
+        <strong class="article-nav-caption">Olde posts</strong>
+        <div class="article-nav-title">How2Heap堆利用学习笔记(四)House Of Spirit/poison_null_byte</div>
+      </a>
+    
+  </nav>
+
+
+  
+
+  
+    
+  <div class="gitalk" id="gitalk-container"></div>
+  
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+
+  
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+  
+<script src="https://cdn.bootcss.com/blueimp-md5/2.10.0/js/md5.min.js"></script>
+
+  <script type="text/javascript">
+    var gitalk = new Gitalk({
+      clientID: '5ae4e05700db25ed5406',
+      clientSecret: '8a38a8cb845b0b6198a0c59cab9df498ac778343',
+      repo: 'migraine-sudo.github.io',
+      owner: 'migraine-sudo',
+      admin: ['migraine-sudo'],
+      // id: location.pathname,      // Ensure uniqueness and length less than 50
+      id: md5(location.pathname),
+      distractionFreeMode: false,  // Facebook-like distraction free mode
+      pagerDirection: 'last'
+    })
+
+  gitalk.render('gitalk-container')
+  </script>
+
+  
+
+</article>
+
+
+
+</section>
+  <footer class="footer">
+  <div class="outer">
+    <div class="float-right">
+      <ul class="list-inline">
+  
+    <li><i class="fe fe-smile-alt"></i> <span id="busuanzi_value_site_uv"></span></li>
+  
+</ul>
+    </div>
+    <ul class="list-inline">
+      <li>&copy; 2020 Migraine殇</li>
+      <li>Powered by <a href="http://hexo.io/" target="_blank">Hexo</a></li>
+      <li>Theme  <a href="https://github.com/zhwangart/hexo-theme-ocean" target="_blank" rel="noopener">Ocean</a></li>
+    </ul>
+  </div>
+</footer>
+
+</main>
+
+<aside class="sidebar sidebar-specter">
+  
+    <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+    <div class="logo">
+      <a href="/"><img src="/images/fujiang.jpg" alt="Migraine殇"></a>
+    </div>
+  
+  <ul class="nav nav-main">
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/">Home</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/archives">Archives</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/gallery">Gallery</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/about">About</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/tags">Tags</a>
+      </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link nav-item-search" title="Search">
+        <i class="fe fe-search"></i>
+        Search
+      </a>
+    </li>
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      <div class="totop" id="totop">
+  <i class="fe fe-rocket"></i>
+</div>
+    </li>
+    <li class="nav-item">
+      
+        <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+          <i class="fe fe-feed"></i>
+        </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+  </aside>
+  
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/jquery.justifiedGallery.min.js"></script>
+
+
+<script src="/js/lazyload.min.js"></script>
+
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+  
+<script src="/js/tocbot.min.js"></script>
+
+  <script>
+    // Tocbot_v4.7.0  http://tscanlin.github.io/tocbot/
+    tocbot.init({
+      tocSelector: '.tocbot',
+      contentSelector: '.article-entry',
+      headingSelector: 'h1, h2, h3, h4, h5, h6',
+      hasInnerContainers: true,
+      scrollSmooth: true,
+      positionFixedSelector: '.tocbot',
+      positionFixedClass: 'is-position-fixed',
+      fixedSidebarOffset: 'auto',
+    });
+  </script>
+
+
+
+<script src="/js/ocean.js"></script>
+
+
+</body>
+</html>
