@@ -124,7 +124,7 @@
 
 <p><em>需要关注的点就是JSArray的length和FixedArray的length在正常操作下是保持同步的，而接下来的poc将打破这种同步关系</em></p>
 <p><strong>触发DCHECK而造成Crash</strong></p>
-<p>![屏幕快照2020-02-16下午5.12.17123](<a href="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/屏幕快照" target="_blank" rel="noopener">https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/屏幕快照</a> 2020-02-16 下午5.12.17123.png)</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/FJBCKY.png" alt="FJBCKY"></p>
 <p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/WxcdyC.png" alt="WxcdyC"></p>
 <p><em>DECHECK</em>检查index和this-&gt;length()的时候出现了一些问题，检查语句来自fixed-array-inl.h:96。</p>
 <p>FixedArray::set中的this对象与oobArray的elements地址相符。但是这里的elememts指向的却是一个空数组。</p>
