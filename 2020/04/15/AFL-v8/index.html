@@ -260,7 +260,7 @@
 <p><strong>run_target</strong></p>
 <p>运行我们的目标程序，并且通过forkserver与目标进程通信，最后会返回对应的反馈信息<strong>status</strong>，作为save_if_interesting函数的判断依据（例如FAULT_CRASH）。</p>
 <p>程序会检测afl运行模式，如果是dumb模式或者forkserver并没有被初始化，将会运行初始化，这部分和前面的init_forkserver相同，不重复分析了。</p>
-<p>![image-20200320204927546](/Users/migraine/Library/Application Support/typora-user-images/image-20200320204927546.png)</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/SiDh5H.png" alt="SiDh5H"></p>
 <p>当我们不是dumb模式的时候，forkserver已经运行，所以直接会进入进程通信部分。</p>
 <p>管道读取读取4个字节，检测子进程是否运行正常。</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* In non-dumb mode, we have the fork server up and running, so simply</span></span><br><span class="line"><span class="comment">      tell it to have at it, and then read back PID. */</span></span><br><span class="line"></span><br><span class="line">   <span class="keyword">if</span> ((res = <span class="built_in">write</span>(fsrv_ctl_fd, &amp;prev_timed_out, <span class="number">4</span>)) != <span class="number">4</span>) &#123;</span><br><span class="line">     <span class="keyword">if</span> (stop_soon) <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">     RPFATAL(res, <span class="string">"Unable to request new process from fork server (OOM?)"</span>);</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   <span class="keyword">if</span> ((res = <span class="built_in">read</span>(fsrv_st_fd, &amp;child_pid, <span class="number">4</span>)) != <span class="number">4</span>) &#123;</span><br><span class="line">     <span class="keyword">if</span> (stop_soon) <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">     RPFATAL(res, <span class="string">"Unable to request new process from fork server (OOM?)"</span>);</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
@@ -379,9 +379,9 @@
       </a>
     
     
-      <a href="/2020/02/22/roll-a-v8/" class="article-nav-link">
+      <a href="/2020/03/14/kernel-pwn/" class="article-nav-link">
         <strong class="article-nav-caption">Olde posts</strong>
-        <div class="article-nav-title">PlaidCTF - roll a d8</div>
+        <div class="article-nav-title">kernel pwn 入门-BabyDriver</div>
       </a>
     
   </nav>

