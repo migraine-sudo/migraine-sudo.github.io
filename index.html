@@ -142,6 +142,74 @@
       
         
 
+<article id="post-mips-pwn" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h2 itemprop="name">
+      <a class="article-title" href="/2021/01/30/mips-pwn/">Mips 漏洞入门与分析（CVE-2020-8423）</a>
+    </h2>
+  
+  
+
+
+
+
+      </header>
+    
+
+    
+      <div class="article-meta">
+        <a href="/2021/01/30/mips-pwn/" class="article-date">
+  <time datetime="2021-01-29T17:50:25.000Z" itemprop="datePublished">2021-01-30</time>
+</a>
+        
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Kernel-IOT/">Kernel/IOT</a>
+  </div>
+
+      </div>
+    
+
+    
+
+    <div class="article-entry" itemprop="articleBody">
+      
+
+
+      
+
+      
+        <p>Mips二进制漏洞入门笔记，最后调试TP-LINK路由器的一个栈溢出漏洞作为练习。</p>
+        
+          <a class="article-more-link" href="/2021/01/30/mips-pwn/">Read More...</a>
+        
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://migraine-sudo.github.io/2021/01/30/mips-pwn/" data-id="ckkildr000000s9sehmcn429j"
+         class="article-share-link">Share</a>
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CTF/" rel="tag">CTF</a></li></ul>
+
+    </footer>
+
+  </div>
+
+  
+
+  
+
+</article>
+
+
+
+      
+        
+
 <article id="post-v8-Instrumentation" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
   
   <div class="article-inner">
@@ -672,76 +740,6 @@
          class="article-share-link">Share</a>
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CTF/" rel="tag">CTF</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/FUZZ/" rel="tag">FUZZ</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/HEAP/" rel="tag">HEAP</a></li></ul>
-
-    </footer>
-
-  </div>
-
-  
-
-  
-
-</article>
-
-
-
-      
-        
-
-<article id="post-Shellcode-Write" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
-  
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h2 itemprop="name">
-      <a class="article-title" href="/2019/12/21/Shellcode-Write/">一步步编写Shellcode</a>
-    </h2>
-  
-  
-
-
-
-
-      </header>
-    
-
-    
-      <div class="article-meta">
-        <a href="/2019/12/21/Shellcode-Write/" class="article-date">
-  <time datetime="2019-12-20T17:32:12.000Z" itemprop="datePublished">2019-12-21</time>
-</a>
-        
-  <div class="article-category">
-    <a class="article-category-link" href="/categories/Win%E6%BC%8F%E6%B4%9E/">Win漏洞</a>
-  </div>
-
-      </div>
-    
-
-    
-
-    <div class="article-entry" itemprop="articleBody">
-      
-
-
-      
-
-      
-        <h1 id="摘要："><a href="#摘要：" class="headerlink" title="摘要："></a>摘要：</h1><p>在C语言中，调用一个函数，编写者无需关心函数地址是如何获取的，所有的操作IDE在进行链接的时候帮助我们完成了。但是在shellcode中，这些操作都需要我们自己去完成，理解PE结构，理解函数表，这些都是shellcode编写最有魅力的一部分。</p>
-<p>本文的逻辑首先是从C代码着手，学习如何使用汇编重现的基础，编写一个无移植性的shellcode作基础引导。在掌握了硬编码编写之后，通过掌握获取函数导出表，编写能够在所有Windows版本上运行的通用shellcode。</p>
-<p>这篇文章时间跨度比较久远，起笔还是暑假在贵阳的时候，后来做了一段时间WEB安全，这篇文章便写了一小半就烂尾了。后来投入到Win/Browser下漏洞的怀抱中，需要在WIN7下做一些自定义shellcode，自己之前自定义的shellcode居然无法在WIN7下运行，于是想起这篇未完工的文章，借此对shellcode编写做一次总结与复习。</p>
-        
-          <a class="article-more-link" href="/2019/12/21/Shellcode-Write/">Read More...</a>
-        
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://migraine-sudo.github.io/2019/12/21/Shellcode-Write/" data-id="ckjl6z7ib0010g4jhbw7yeeet"
-         class="article-share-link">Share</a>
-      
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Exploit/" rel="tag">Exploit</a></li></ul>
 
     </footer>
 
