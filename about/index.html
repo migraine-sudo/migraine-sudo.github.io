@@ -1,235 +1,187 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-startup-image" href="images/hexo.png">
-  <link rel="apple-touch-icon" href="images/icons/icon-72x72.png">
-<link rel="apple-touch-icon" sizes="152x152" href="images/icons/icon-152x152.png">
-<link rel="apple-touch-icon" sizes="180x180" href="images/icons/icon-192x192.png">
-<link rel="apple-touch-icon" sizes="167x167" href="images/icons/icon-192x192.png">
-<meta name="google-site-verification" content="L5kWE5AiVRVNF1nYqMGyNoUu7WToxJIl3d8MmFk4Cjw" />
-  <meta charset="utf-8">
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>about | Migraine殇</title><meta name="keywords" content="Migraine殇,安全研究,日记,pwn,二进制,ctf,浏览器"><meta name="author" content="Migraine殇"><meta name="copyright" content="Migraine殇"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="你好！首先，欢迎你从Internet冲浪中忙里抽闲，进入我这个小小的港湾小憩。    Migraine&#39;s Blog是我在2019年搭建在github的，内容主要是一些技术性文章和一些散文。  Migriane-sudo一半是我的回忆，一半是我的现在。  Migraine是童年常伴我的一部分，而sudo则是我现在正在努力的缩影，努力取得自己人生的root权限。  同时，这也是这篇博客的域名。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="about">
+<meta property="og:url" content="https://migraine-sudo.github.io/about/index.html">
+<meta property="og:site_name" content="Migraine殇">
+<meta property="og:description" content="你好！首先，欢迎你从Internet冲浪中忙里抽闲，进入我这个小小的港湾小憩。    Migraine&#39;s Blog是我在2019年搭建在github的，内容主要是一些技术性文章和一些散文。  Migriane-sudo一半是我的回忆，一半是我的现在。  Migraine是童年常伴我的一部分，而sudo则是我现在正在努力的缩影，努力取得自己人生的root权限。  同时，这也是这篇博客的域名。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg">
+<meta property="article:published_time" content="2019-08-26T09:07:15.000Z">
+<meta property="article:modified_time" content="2021-02-07T05:19:37.972Z">
+<meta property="article:author" content="Migraine殇">
+<meta property="article:tag" content="Migraine殇,安全研究,日记,pwn,二进制,ctf,浏览器">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg"><link rel="shortcut icon" href="/img/favicon.ico"><link rel="canonical" href="https://migraine-sudo.github.io/about/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="manifest" href="/manifest.json"/><link rel="apple-touch-icon" sizes="180x180" href="/images/icon/favicon.ico"/><link rel="icon" type="image/png" sizes="32x32" href="/images/icon/favicon.ico"/><link rel="icon" type="image/png" sizes="16x16" href="/images/icon/favicon.ico"/><link rel="mask-icon" href="/images/icon/favicon.ico" color="#5bbad5"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    jQuery: 'https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js',
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+    },
+    fancybox: {
+      js: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isanchor: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = { 
+  isPost: false,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: false,
+  postUpdate: '2021-02-07 13:19:37'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
   
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
   
-    <meta name="keywords" content="Migraine殇,个人博客,日记,pwn,二进制,ctf,浏览器">
-  
-  
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>
-    about |
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
     
-    Migraine殇</title>
-  
-    <link rel="shortcut icon" href="/fujiang.jpg">
-  
-  
-<link rel="stylesheet" href="/css/style.css">
+          const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+          const isLightMode = window.matchMedia('(prefers-color-scheme: light)').matches
+          const isNotSpecified = window.matchMedia('(prefers-color-scheme: no-preference)').matches
+          const hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
 
-  
-    
-<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
-
-  
-  
-<script src="/js/pace.min.js"></script>
-
-<meta name="generator" content="Hexo 4.2.0"></head>
-
-<body>
-<main class="content">
-  <section class="outer">
-  
-
-<article id="page-" class="article article-type-page" itemscope itemprop="blogPost" data-scroll-reveal>
-  
-  <div class="article-inner">
-    
-      <header class="article-header">
+          if (t === undefined) {
+            if (isLightMode) activateLightMode()
+            else if (isDarkMode) activateDarkMode()
+            else if (isNotSpecified || hasNoSupport) {
+              const now = new Date()
+              const hour = now.getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            window.matchMedia('(prefers-color-scheme: dark)').addListener(function (e) {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else if (t === 'light') activateLightMode()
+          else activateDarkMode()
         
-  
-    <h1 class="article-title" itemprop="name">
-      about
-    </h1>
-  
-  
-
-
-
-
-      </header>
-    
-
-    
-
-    
-
-    <div class="article-entry" itemprop="articleBody">
-      
-
-
-      
-
-      
-        <br>
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    })(window)</script><meta name="generator" content="Hexo 5.3.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="author-avatar"><img class="avatar-img" src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/戈薇.jpeg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">32</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">14</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">9</div></a></div></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 文章</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="page" id="body-wrap"><header class="not-home-page" id="page-header" style="background-image: url('https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/IMG_7936.JPG')"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">Migraine殇</a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 文章</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="page-site-info"><h1 id="site-title">about</h1></div></header><main class="layout" id="content-inner"><div id="page"><div id="article-container"><br>
 你好！首先，欢迎你从Internet冲浪中忙里抽闲，进入我这个小小的港湾小憩。  
 <br><br>
 Migraine's Blog是我在2019年搭建在github的，内容主要是一些技术性文章和一些散文。
 <br><br>
 Migriane-sudo一半是我的回忆，一半是我的现在。
 <br><br>
-Migraine是童年常伴我的一部分，而sudo则是我现在正在努力的缩影。
+Migraine是童年常伴我的一部分，而sudo则是我现在正在努力的缩影，努力取得自己人生的root权限。
 <br><br>
 同时，这也是这篇博客的域名。
-<br><br><br><br>
+<br><br><br>
 
-<p>技术文章主要涉及编程/网络安全，一些自己发布在一些平台的文章还有一些学习笔记。平时更多的一些记录可以看我的<a href="https://blog.csdn.net/qq_41996248/" target="_blank" rel="noopener">CSDN</a></p>
-<p>散文主要记录了生活琐事，时间跨度从初中开始。如果喜欢我的文笔，也欢迎访问我的<a href="http://yishulinfeng.lofter.com/" target="_blank" rel="noopener">LOFTER</a></p>
-<p>这次终于勉强给博客添上了背景音乐，算是圆了六年前与queen of my heart邂逅时一直惦记的小梦想。</p>
-<p>无论是谁，能来我博客逛逛，哪怕就是没事看一下有没有更新，我真的会超级高兴的。<br>欢迎进入我的世界，从今以后我们就是朋友咯。</p>
-<p>博客支持PWA和<a href="https://migraine-sudo.github.io/atom.xml">RSS订阅</a>，如果能够订阅真是小博主之大幸。</p>
-<blockquote>
-<p>PWA功能能够让WEB应用拥有原生APP的体验，下载Chrome即可体验</p>
-</blockquote>
 <br>
-*如果对博客的内容有任何建议或者问题，都可以联系我!*
+如果对博客的内容有任何建议或者问题，都可以联系我!
 
 <hr>
-<h4 id="联系方式"><a href="#联系方式" class="headerlink" title="联系方式:"></a>联系方式:</h4><p><strong><em>邮箱:<a href="mailto:2576361468@qq.com">2576361468@qq.com</a></em></strong><br><strong><em>Twitter：<a href="https://twitter.com/0xp0kerface" target="_blank" rel="noopener">0xp0kerface</a></em></strong><br><strong><em>Github:</em></strong><a href="https://github.com/migraine-sudo" target="_blank" rel="noopener"><strong><em>migraine-sudo</em></strong></a><br><strong><em>安全客</em></strong><a href="https://www.anquanke.com/member/136885" target="_blank" rel="noopener">Migraine</a><br>电脑端体验更佳哦</p>
-<hr>
-<h4 id="友情链接："><a href="#友情链接：" class="headerlink" title="友情链接："></a>友情链接：</h4><p><a href="https://mourinaruto.github.io/" target="_blank" rel="noopener">毛利</a></p>
-<p><a href="https://www.mcblog.net.cn/" target="_blank" rel="noopener">MCBLOG</a> </p>
-<p><a href="http://radishes.top" target="_blank" rel="noopener">萝卜</a></p>
-<p><a href="https://www.sunxiaokong.xyz" target="_blank" rel="noopener">孙小空</a></p>
-<p><a href="http://n0vice.gitee.io/" target="_blank" rel="noopener">N0vice</a></p>
-<p><a href="https://rgdz-gzu.github.io" target="_blank" rel="noopener">RGDZ-GZU</a></p>
-<p><a href="https://blog.csdn.net/qq_40827990" target="_blank" rel="noopener">钞sir</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://migraine-sudo.github.io/about/index.html" data-id="ckjl6z7hq0007g4jhhygu2qmn"
-         class="article-share-link">Share</a>
-      
-    </footer>
-
-  </div>
-
-  
-    
-
-  
-
-  
-
-</article>
-
-
-
-</section>
-  <footer class="footer">
-  <div class="outer">
-    <div class="float-right">
-      <ul class="list-inline">
-  
-    <li><i class="fe fe-smile-alt"></i> <span id="busuanzi_value_site_uv"></span></li>
-  
-</ul>
-    </div>
-    <ul class="list-inline">
-      <li>&copy; 2021 Migraine殇</li>
-      <li>Powered by <a href="http://hexo.io/" target="_blank">Hexo</a></li>
-      <li>Theme  <a href="https://github.com/zhwangart/hexo-theme-ocean" target="_blank" rel="noopener">Ocean</a></li>
-    </ul>
-  </div>
-</footer>
-
-</main>
-
-  <aside class="sidebar">
-    
-    <button class="navbar-toggle"></button>
-<nav class="navbar">
-  
-    <div class="logo">
-      <a href="/"><img src="/images/fujiang.jpg" alt="Migraine殇"></a>
-    </div>
-  
-  <ul class="nav nav-main">
-    
-      <li class="nav-item">
-        <a class="nav-item-link" href="/">Home</a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-item-link" href="/archives">Archives</a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-item-link" href="/gallery">Gallery</a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-item-link" href="/about">About</a>
-      </li>
-    
-      <li class="nav-item">
-        <a class="nav-item-link" href="/tags">Tags</a>
-      </li>
-    
-    <li class="nav-item">
-      <a class="nav-item-link nav-item-search" title="Search">
-        <i class="fe fe-search"></i>
-        Search
-      </a>
-    </li>
-  </ul>
-</nav>
-<nav class="navbar navbar-bottom">
-  <ul class="nav">
-    <li class="nav-item">
-      <div class="totop" id="totop">
-  <i class="fe fe-rocket"></i>
-</div>
-    </li>
-    <li class="nav-item">
-      
-        <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
-          <i class="fe fe-feed"></i>
-        </a>
-      
-    </li>
-  </ul>
-</nav>
-<div class="search-form-wrap">
-  <div class="local-search local-search-plugin">
-  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
-  <div id="local-search-result" class="local-search-result"></div>
-</div>
-</div>
-  </aside>
-  
-<script src="/js/jquery-2.0.3.min.js"></script>
-
-
-<script src="/js/jquery.justifiedGallery.min.js"></script>
-
-
-<script src="/js/lazyload.min.js"></script>
-
-
-<script src="/js/busuanzi-2.3.pure.min.js"></script>
-
-
-  
-<script src="/fancybox/jquery.fancybox.min.js"></script>
-
-
-
-
-
-
-<script src="/js/ocean.js"></script>
-
-
-</body>
-</html>
+<h4 id="更多联系方式"><a href="#更多联系方式" class="headerlink" title="更多联系方式:"></a>更多联系方式:</h4><p> <strong><em>安全客： <a target="_blank" rel="noopener" href="https://www.anquanke.com/member/136885">Migraine</a></em></strong></p>
+</div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="card-info-avatar is-center"><img class="avatar-img" src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/戈薇.jpeg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/><div class="author-info__name">Migraine殇</div><div class="author-info__description"></div></div><div class="card-info-data"><div class="card-info-data-item is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">32</div></a></div><div class="card-info-data-item is-center"><a href="/tags/"><div class="headline">标签</div><div class="length-num">14</div></a></div><div class="card-info-data-item is-center"><a href="/categories/"><div class="headline">分类</div><div class="length-num">9</div></a></div></div><a class="button--animated" id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/migraine-sudo"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/migraine-sudo" target="_blank" title="Github"><i class="fab fa-github"></i></a><a class="social-icon" href="mailto:2576361468@qq.com" target="_blank" title="Email"><i class="fas fa-envelope"></i></a><a class="social-icon" href="https://twitter.com/0xp0kerface" target="_blank" title="Twitter"><i class="fab fa-twitter"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn card-announcement-animation"></i><span>公告</span></div><div class="announcement_content">欢迎光临寒舍，右下角可以设置夜间模式</div></div><div class="sticky_layout"><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2099/12/14/Diary/" title="Diary"><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/IMG_7932.JPG" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Diary"/></a><div class="content"><a class="title" href="/2099/12/14/Diary/" title="Diary">Diary</a><time datetime="2099-12-13T16:01:36.000Z" title="发表于 2099-12-14 00:01:36">2099-12-14</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/01/30/mips-pwn/" title="Mips 漏洞入门与分析（CVE-2020-8423）"><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/7GdBdp.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Mips 漏洞入门与分析（CVE-2020-8423）"/></a><div class="content"><a class="title" href="/2021/01/30/mips-pwn/" title="Mips 漏洞入门与分析（CVE-2020-8423）">Mips 漏洞入门与分析（CVE-2020-8423）</a><time datetime="2021-01-29T17:50:25.000Z" title="发表于 2021-01-30 01:50:25">2021-01-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2020/10/06/v8-Instrumentation/" title="使用AFL对V8进行插桩"><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/aqaMIn.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="使用AFL对V8进行插桩"/></a><div class="content"><a class="title" href="/2020/10/06/v8-Instrumentation/" title="使用AFL对V8进行插桩">使用AFL对V8进行插桩</a><time datetime="2020-10-06T08:33:13.000Z" title="发表于 2020-10-06 16:33:13">2020-10-06</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2020/04/15/AFL-v8/" title="AFL源代码阅读"><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/ayHKVP.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="AFL源代码阅读"/></a><div class="content"><a class="title" href="/2020/04/15/AFL-v8/" title="AFL源代码阅读">AFL源代码阅读</a><time datetime="2020-04-15T14:39:12.000Z" title="发表于 2020-04-15 22:39:12">2020-04-15</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2020/03/14/kernel-pwn/" title="kernel pwn 入门-BabyDriver"><img src="https://gitee.com/p0kerface/blog_image_management/raw/master/uPic/g3PvYJ.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="kernel pwn 入门-BabyDriver"/></a><div class="content"><a class="title" href="/2020/03/14/kernel-pwn/" title="kernel pwn 入门-BabyDriver">kernel pwn 入门-BabyDriver</a><time datetime="2020-03-14T07:51:50.000Z" title="发表于 2020-03-14 15:51:50">2020-03-14</time></div></div></div></div><div class="card-widget card-categories"><div class="item-headline">
+            <i class="fas fa-folder-open"></i>
+            <span>分类</span>
+            <a class="card-more-btn" href="/categories/" title="查看更多">
+    <i class="fas fa-angle-right"></i></a>
+            </div>
+            <ul class="card-category-list" id="aside-cat-list">
+            <li class="card-category-list-item "><a class="card-category-list-link" href="/categories/CTF/"><span class="card-category-list-name">CTF</span><span class="card-category-list-count">13</span></a></li><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/IE%E6%BC%8F%E6%B4%9E/"><span class="card-category-list-name">IE漏洞</span><span class="card-category-list-count">2</span></a></li><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/Kernel-IOT/"><span class="card-category-list-name">Kernel/IOT</span><span class="card-category-list-count">2</span></a></li><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/Win%E6%BC%8F%E6%B4%9E/"><span class="card-category-list-name">Win漏洞</span><span class="card-category-list-count">3</span></a></li><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/v8/"><span class="card-category-list-name">v8</span><span class="card-category-list-count">2</span></a></li><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/%E5%BD%B1%E8%AF%84/"><span class="card-category-list-name">影评</span><span class="card-category-list-count">1</span></a></li><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/%E6%95%A3%E6%96%87/"><span class="card-category-list-name">散文</span><span class="card-category-list-count">5</span></a></li><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/%E6%97%A5%E8%AE%B0/"><span class="card-category-list-name">日记</span><span class="card-category-list-count">1</span></a></li>
+            </ul></div><div class="card-widget card-tags"><div class="item-headline"><i class="fas fa-tags"></i><span>标签</span></div><div class="card-tag-cloud"><a href="/tags/CTF/" style="font-size: 1.5em; color: #99a9bf">CTF</a> <a href="/tags/Diary/" style="font-size: 1.1em; color: #999">Diary</a> <a href="/tags/Exploit/" style="font-size: 1.43em; color: #99a6b9">Exploit</a> <a href="/tags/FUZZ/" style="font-size: 1.23em; color: #999ea6">FUZZ</a> <a href="/tags/HEAP/" style="font-size: 1.37em; color: #99a4b2">HEAP</a> <a href="/tags/Love/" style="font-size: 1.1em; color: #999">Love</a> <a href="/tags/Web%E6%B8%97%E9%80%8F/" style="font-size: 1.23em; color: #999ea6">Web渗透</a> <a href="/tags/%E4%BF%A1%E6%81%AF%E5%AE%89%E5%85%A8/" style="font-size: 1.1em; color: #999">信息安全</a> <a href="/tags/%E5%9B%9E%E5%BF%86%E4%BE%BF%E6%98%AF%E9%82%A3%E4%B8%9D%E4%B8%9D%E6%87%8A%E6%82%94/" style="font-size: 1.17em; color: #999c9f">回忆便是那丝丝懊悔</a> <a href="/tags/%E6%97%85%E9%80%94%E6%98%AF%E4%B8%80%E5%9C%BA%E4%BF%AE%E8%A1%8C/" style="font-size: 1.3em; color: #99a1ac">旅途是一场修行</a> <a href="/tags/%E6%AF%95%E4%B8%9A%E5%AD%A3/" style="font-size: 1.1em; color: #999">毕业季</a> <a href="/tags/%E6%B5%8F%E8%A7%88%E5%99%A8/" style="font-size: 1.1em; color: #999">浏览器</a> <a href="/tags/%E7%AC%AC%E4%B8%83%E5%B9%B4%E4%B9%8B%E5%90%8E/" style="font-size: 1.3em; color: #99a1ac">第七年之后</a> <a href="/tags/%E7%AC%AC%E5%85%AD%E5%B9%B4/" style="font-size: 1.1em; color: #999">第六年</a></div></div><div class="card-widget card-archives"><div class="item-headline"><i class="fas fa-archive"></i><span>归档</span><a class="card-more-btn" href="/archives/" title="查看更多">
+    <i class="fas fa-angle-right"></i></a></div><ul class="card-archive-list"><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2099/12/"><span class="card-archive-list-date">十二月 2099</span><span class="card-archive-list-count">1</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2021/01/"><span class="card-archive-list-date">一月 2021</span><span class="card-archive-list-count">1</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/10/"><span class="card-archive-list-date">十月 2020</span><span class="card-archive-list-count">1</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/04/"><span class="card-archive-list-date">四月 2020</span><span class="card-archive-list-count">1</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/03/"><span class="card-archive-list-date">三月 2020</span><span class="card-archive-list-count">1</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/02/"><span class="card-archive-list-date">二月 2020</span><span class="card-archive-list-count">2</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2020/01/"><span class="card-archive-list-date">一月 2020</span><span class="card-archive-list-count">2</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2019/12/"><span class="card-archive-list-date">十二月 2019</span><span class="card-archive-list-count">4</span></a></li></ul></div><div class="card-widget card-webinfo"><div class="item-headline"><i class="fas fa-chart-line"></i><span>网站资讯</span></div><div class="webinfo"><div class="webinfo-item"><div class="item-name">文章数目 :</div><div class="item-count">32</div></div><div class="webinfo-item"><div class="item-name">本站访客数 :</div><div class="item-count" id="busuanzi_value_site_uv"></div></div><div class="webinfo-item"><div class="item-name">本站总访问量 :</div><div class="item-count" id="busuanzi_value_site_pv"></div></div><div class="webinfo-item"><div class="item-name">最后更新时间 :</div><div class="item-count" id="last-push-date" data-lastPushDate="2021-02-07T17:14:10.021Z"></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2021 By Migraine殇</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="translateLink" type="button" title="简繁转换">繁</button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
