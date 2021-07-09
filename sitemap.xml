@@ -2,6 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://migraine-sudo.github.io/about/index.html</loc>
+    
+    <lastmod>2021-07-09</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>https://migraine-sudo.github.io/2021/04/02/QEMU-CVE-2015-5165/</loc>
     
     <lastmod>2021-07-09</lastmod>
@@ -227,13 +234,6 @@
   
   <url>
     <loc>https://migraine-sudo.github.io/2021/01/30/mips-pwn/</loc>
-    
-    <lastmod>2021-02-07</lastmod>
-    
-  </url>
-  
-  <url>
-    <loc>https://migraine-sudo.github.io/about/index.html</loc>
     
     <lastmod>2021-02-07</lastmod>
     
